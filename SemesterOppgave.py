@@ -7,12 +7,13 @@ from matplotlib.widgets import RadioButtons
 import matplotlib.image as mpimg
 import matplotlib.patches as mpatches
 
-from datetime import datetime
 import calendar
 
-#from TimerUtils import Timer
-
 from types import SimpleNamespace
+
+from typing import Tuple
+from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
 
 import random
 from random import randint
@@ -21,6 +22,9 @@ from random import randint
 #Generater random data for a year
 # centervals are values average values for each month
 # samedata = false, new data each time program is called
+# known bugs:
+# - Fixed error that caused function to only generate 364 data points
+# - 2024 is a leap year so we generate 365 data points
 def GenereateRandomYearDataList(intensity:float, seed:int=0) -> list[int]:
     """
     :param intensity: Number specifying size, amplitude
@@ -34,7 +38,7 @@ def GenereateRandomYearDataList(intensity:float, seed:int=0) -> list[int]:
     nox = centervals[0]
     inc = True
     nox_list = []
-    for index in range(1,365):
+    for index in range(0,366):
         if randint(1, 100) > 50:
             inc = not inc
         center = centervals[int(index / 30)]
@@ -46,6 +50,13 @@ def GenereateRandomYearDataList(intensity:float, seed:int=0) -> list[int]:
 # END GenereateRandomYearDataList
 
 
+def ExtractDataInterval(data, start, end):
+    result = data[start : end]
+    print("extracting data from ", start, " to ", end, " length: ", len(result))
+    print("extracted data length: ", len(result))
+    return result
+
+
 # class to simplify/configure UI settings
 class UI:
     marker_stroke_color:str = "#333333AA"
@@ -55,6 +66,9 @@ class UI:
     marker_dot_radius = 4
     marker_dot_color = "#000000"
 
+    class RadioGroup:
+        bg_color = '#FFFFFFCC'
+
     class Colors:
         alpha:str = "CC"
         kronstad:str = "#c02f1e" + alpha
@@ -62,29 +76,101 @@ class UI:
         bryggen: str = "#937aff" + alpha
         picked:str = "#FFc843" + alpha
 
-#print(UI.Colors.kronstad)  # Outputs: #c02f1eaa
-
-# define year
-current_year = 2024
 
 #create figure and 3 axis
 fig = plt.figure(figsize=(13, 5))
 
 axNok = fig.add_axes((0.05, 0.05, 0.45, 0.9))
 axInterval = fig.add_axes((0.4, 0.5, 0.1, 0.25))
+axInterval.patch.set_alpha(0.3)
 axBergen = fig.add_axes((0.5, 0.05, 0.5, 0.9))
 
-axInterval.patch.set_alpha(0.3)
-
-coordinate_dimensions = (2000, 1500)
 
 days_interval = (1,365)
 
 marked_point_origin = (-500,-500)
-#marked_point = marked_point_origin[:]
+
+date_interval_type_to_string_map = {
+    'År'        : 'year',
+    'Kvartal'   : 'quarter',
+    'Måned'     : 'month',
+    'Day'       : 'day',
+}
+
+#def get_days_per_year(year) -> int:
+#    return 366 if calendar.isleap(year) else 365
+
+def get_days_in_month(year, month) -> int:
+    month = (month - 1) % 12 + 1
+    return calendar.monthrange(year, month)[1]
+
+def get_days_between_dates(start_date, end_date) -> int:
+    return (end_date - start_date).days
+
+class DateInterval:
+    def __init__(self, type_id, year, start, length):
+        self.type_id = type_id
+        self.year = year
+        self.start = start
+        self.length = length
+
+    def convert_dates_to_days_interval(self, start_date, end_date, zero_based = False) -> Tuple[int, int]:
+        zbo = 0 if zero_based else 1
+        start_of_year_date = datetime(self.year, 1, 1)
+        days_into_year = get_days_between_dates(start_of_year_date, start_date) + zbo - 1
+
+        print(f"type_id: {self.type_id}")
+        print(f"start days into year: {days_into_year}")
+        print(f"start_date: {start_date}, end_date, {end_date}")
+        print(f"days between dates: {get_days_between_dates(start_date, end_date)}")
+
+        return (days_into_year, days_into_year + get_days_between_dates(start_date, end_date))
+
+    def to_days_interval(self, zero_based = False) -> Tuple[int, int]:
+        zbo = 0 if zero_based else 1
+
+        # convert to days interval
+        if self.type_id == 'year':
+            start_date = datetime(self.year, 1, 1)
+            end_date = start_date + relativedelta(months=12)
+            return self.convert_dates_to_days_interval(self, start_date, end_date, zero_based)
+
+        if self.type_id == 'quarter':
+            start_date = datetime(self.year, self.start, 1)
+            end_date = start_date + relativedelta(months=3)
+            return self.convert_dates_to_days_interval(self, start_date, end_date, zero_based)
+
+        if self.type_id == 'month':
+            start_date = datetime(self.year, self.start, 1)
+            end_date = start_date + relativedelta(months=self.length)
+            return self.convert_dates_to_days_interval(self, start_date, end_date, zero_based)
+
+        if self.type_id == 'day':
+            start_date = datetime(self.year, self.start, 1)
+            end_date = start_date + timedelta(days=self.length)
+            return self.convert_dates_to_days_interval(self, start_date, end_date, zero_based)
+
+        raise ValueError("Unknown date interval type")
+# END DateInterval
+
+"""
+print("-- convert_dates_to_days_interval --")
+di1 = DateInterval('year', 2024, 1, 1)
+print(di1.to_days_interval())
+print("-- end convert_dates_to_days_interval --\n")
+
+print("-- convert_dates_to_days_interval --")
+di1 = DateInterval('month', 2024, 1, 1)
+print(di1.to_days_interval())
+print("-- end convert_dates_to_days_interval --\n")
+
+print("-- convert_dates_to_days_interval --")
+di1 = DateInterval('day', 2024, 1, 1)
+print(di1.to_days_interval())
+print("-- end convert_dates_to_days_interval --\n")
+"""
 
 #----- define string to days interval map
-
 string_to_days_interval_map = {
     'År': (1, 365),
     '1. Kvartal': (1, 90),
@@ -94,29 +180,62 @@ string_to_days_interval_map = {
     # TODO add month 2 + month 3
 }
 
+#----- define string to days interval map
+string_to_data_process_func = {
+    'min': np.min,
+    'max': np.max,
+    'mean': np.mean,
+    'median': np.median,
+    'default': np.mean,
+}
+
+
+# define application main-class
+class Application:
+    def __init__(self):
+        self.data_processing_func = np.mean
+        self.grid_resolutions = (10, 10)
+        self.current_year = 2024
+        self.coordinate_dimensions = (2000, 1500)
+
+    # update processing function, default to np.mean
+    def set_data_processing_func(self, str_func_name):
+        self.data_processing_func = string_to_data_process_func.get(
+            str_func_name,
+            string_to_data_process_func.get('default', np.mean)
+        )
+        print(f"data processing func: {str_func_name}, {self.data_processing_func}")
+# END Application
+
+# create application instance
+app = Application()
+app.grid_resolutions = (20, 15)         # grid resolution for contour plot etc
+app.current_year = datetime.now().year  # set current year
 
 #----- define location objects
 
-# coordinates_kronstad = (1300, 1400)
-#loc_kronstad.nox_year = GenereateRandomYearDataList(intensity=1.0, seed = 2)
 loc_kronstad = SimpleNamespace(
     name = "Kronstad",
     coordinates = (1300,1400),
     nox_year = GenereateRandomYearDataList(intensity=1.0, seed = 2),
     marker = None,
     marker_dot = None,
-    lines_obj = None,
 )
 
-#coordinates_nordnes = (100, 100)
-#loc_nordnes.nox_year = GenereateRandomYearDataList(intensity=.3, seed = 1)
 loc_nordnes = SimpleNamespace(
     name = "Nordnes",
     coordinates = (100,100),
     nox_year = GenereateRandomYearDataList(intensity=.3, seed = 1),
     marker = None,
     marker_dot = None,
-    lines_obj = None,
+)
+
+loc_bryggen = SimpleNamespace(
+    name = "Nordnes",
+    coordinates = (300,400),
+    nox_year = GenereateRandomYearDataList(intensity=.5, seed = 3),
+    marker = None,
+    marker_dot = None,
 )
 
 loc_user = SimpleNamespace(
@@ -125,7 +244,6 @@ loc_user = SimpleNamespace(
     nox_year = [],
     marker = None,
     marker_dot = None,
-    lines_obj = None,
 )
 
 
@@ -135,29 +253,24 @@ redraw_bergen = True
 # flag to say if day interval has changed
 
 # read image of bergen
-img = mpimg.imread('Bergen.jpg')
+city_map_image = None
 
 def get_days_interval_duration():
     return days_interval[1] - days_interval[0] + 1
 
+"""
 def is_quarter_period():
     return get_days_interval_duration() != 365
+"""
 
-def set_days_interval(start, end):
-    global days_interval
-    #global nordnesNoxLines, kronstadNoxLines, userNoxLines, bryggenNoxLines
-
-    days_interval = (start, end)
-
-    # "reset" lines_obj by setting ref to None
-    loc_nordnes.lines_obj = None
-    loc_kronstad.lines_obj = None
-    loc_user.lines_obj = None
+def is_year_period():
+    return get_days_interval_duration() == 365
 
 def set_days_interval_from_str(kvartal):
+    global days_interval
 
-    r = string_to_days_interval_map[kvartal]
-    set_days_interval(r[0], r[1])
+    # set days interval from string_to_days_interval_map[kvartal]
+    days_interval = string_to_days_interval_map[kvartal][:]
 
     # reset user-selected point
     loc_user.coordinates = marked_point_origin[:]
@@ -175,8 +288,11 @@ def on_click(event) :
             plot_graph()
 
 
-#estimate NOX value based on the two measuring stations
-def calc_point_value(valN, valK, pt):
+#estimate NOX value based on the two or more measuring stations
+# - valN: NOX value at Nordnes
+# - valK: NOX value at Kronstad
+# - pt: point to estimate NOX value at
+def get_estimated_value_at_point(valN, valK, pt):
     dist_nordnes = math.dist(loc_nordnes.coordinates, pt)
     dist_kronstad = math.dist(loc_kronstad.coordinates, pt)
     dist_nordnes_kronstad = math.dist(loc_nordnes.coordinates, loc_kronstad.coordinates)
@@ -189,12 +305,12 @@ def calc_point_value(valN, valK, pt):
     val = val * (dist_nordnes_kronstad / total_dist) ** 4
 
     return val
+# END get_estimated_value_at_point
 
-
-# Make markers markerNordnes, markerUser, markerKronstad
+# Make markers at fixed and user-selected locations
+# we store markers in loc_nordnes.marker, loc_kronstad.marker, loc_user.marker, etc
 def draw_circles_stations():
     def create_patch_circle(xy: tuple[float, float], user_color: str):
-        # method to create mpatches.circle at location, with radius, linewidth and color
         circle = mpatches.Circle(xy, UI.marker_size, fill=True, linewidth=UI.marker_stroke_size, color=user_color)
         circle.set_edgecolor(user_color)
         circle.set_facecolor(user_color[0:7] + UI.marker_face_alpha)
@@ -236,13 +352,18 @@ def draw_label_and_ticks():
 
     # compute xticks and xlabels correctly
     # we take into account number of days per month
-    if is_quarter_period():
+    # TODO: get number of monhts in interval and adapt ticks and labels to this
+    #   - right now we just do the fixed quarters
+    if not is_year_period():
+        # compute first month
         first_month = int ((days_interval[0] / 90) * 3) + 1
-        days_acc:int = 0
+
+        # compute xticks, accumulative ticks per month based on days
+        acc = 0
         xticks = [0,1,2,3]
         for x in xticks:
-            xticks[x] = days_acc
-            days_acc += get_days_in_month(current_year, first_month + x)
+            xticks[x] = acc
+            acc += get_days_in_month(app.current_year, first_month + x)
 
         # extract labelnames from xlabels
         xlabels = xlabels[(first_month - 1) : (first_month - 1 + 4)]
@@ -256,6 +377,11 @@ def plot_graph():
 
     # plot graph data, reuse lines_obj taken by <code>lines_obj, = axis.plot(...)</code>
     # WARNING!!!, do NOT remove comma after lines_obj, its not a mistake
+    def plot_data(list_days_arg, data, color):
+        lines_obj, = axNok.plot(list_days_arg, data, color = color)
+        return lines_obj
+    # END plot_data
+    """
     def plot_data(lines_obj, list_days_arg, data, color):
         if lines_obj is None:
             lines_obj, = axNok.plot(list_days_arg, data, color = color)
@@ -263,62 +389,67 @@ def plot_graph():
             lines_obj.set_data(list_days_arg, data)
         return lines_obj
     # END plot_data
+    """
 
-    def generate_grid_samples(days, nord_nox, kron_nox):
-        x_res = 20
-        y_res = 15
+    def generate_grid_samples(nord_nox, kron_nox, preprocess_func):
+        x_scale = (app.coordinate_dimensions[0] / app.grid_resolutions[0])
+        y_scale = (app.coordinate_dimensions[1] / app.grid_resolutions[1])
 
-        x_scale = (coordinate_dimensions[0] / x_res)
-        y_scale = (coordinate_dimensions[1] / y_res)
+        computed_nord_nox = preprocess_func(nord_nox)
+        computed_kron_nox = preprocess_func(kron_nox)
 
-        result = np.zeros((15, 20), dtype=int)
+        result = np.zeros((app.grid_resolutions[1], app.grid_resolutions[0]), dtype=int)
 
-        for iy in range(0, y_res, 1):
-            for ix in range(0, x_res, 1):
+        for iy in range(0, app.grid_resolutions[1], 1):
+            for ix in range(0, app.grid_resolutions[0], 1):
                 pt = (
                     int(ix * x_scale),
                     int(iy * y_scale)
                 )
                 i = 0
-                result[iy][ix] = calc_point_value(nord_nox[i], kron_nox[i], pt)
+                result[iy][ix] = get_estimated_value_at_point(computed_nord_nox, computed_kron_nox, pt)
         return result
     # END create_contour_data
 
-    # compute interval_end from days_interval
-    interval_end = days_interval[1]
-    if is_quarter_period():
-        interval_end = days_interval[0] + (days_interval[1] - days_interval[0])
+    axNok.cla()
+
+    legend_lines = []
 
     # extract nox-profiles for fixed locations
-    nord_nox = loc_nordnes.nox_year[days_interval[0] : interval_end]
-    kron_nox = loc_kronstad.nox_year[days_interval[0] : interval_end]
+    nord_nox = ExtractDataInterval(loc_nordnes.nox_year, days_interval[0], days_interval[0] + get_days_interval_duration())
+    kron_nox = ExtractDataInterval(loc_kronstad.nox_year, days_interval[0], days_interval[0] + get_days_interval_duration())
 
     days = len(nord_nox)
-    list_days = np.arange(1, days + 1)
+    print(f"data length: {days}, interval duration: {get_days_interval_duration()}")
+
+    # arange is end-exclusive but we allready adding 1
+    list_days = np.arange(0, days)
 
     # handle user-selected point
     if loc_user.coordinates != marked_point_origin:
         # calc data-points
-        nox_point = [calc_point_value(nord_nox[i], kron_nox[i], loc_user.coordinates) for i in range(days)]
+        nox_point = [get_estimated_value_at_point(nord_nox[i], kron_nox[i], loc_user.coordinates) for i in range(0, days)]
 
         # set/update user-point NOX values
-        loc_user.lines_obj = plot_data(loc_user.lines_obj, list_days, nox_point, UI.Colors.picked)
+        lines = plot_data(list_days, nox_point, color=UI.Colors.picked)
+        legend_lines.append(lines)
 
         # update marker position
         if loc_user.marker is not None:
             loc_user.marker.set_center(loc_user.coordinates)
             loc_user.marker_dot.set_center(loc_user.coordinates)
     # End of handle user-selected point
-        
 
-    loc_nordnes.lines_obj = plot_data(loc_nordnes.lines_obj, list_days, nord_nox, color=UI.Colors.nordnes)
-    loc_kronstad.lines_obj = plot_data(loc_kronstad.lines_obj, list_days, kron_nox, color=UI.Colors.kronstad)
+    # plot data for fixed locations
+    lines = plot_data(list_days, nord_nox, color=UI.Colors.nordnes)
+    legend_lines.append(lines)
+    lines = plot_data(list_days, kron_nox, color=UI.Colors.kronstad)
+    legend_lines.append(lines)
 
     axNok.set_title("NOX verdier")
     axInterval.set_title("Intervall")
 
-    lines = [loc_kronstad.lines_obj, loc_nordnes.lines_obj] if loc_user.lines_obj is None else [loc_kronstad.lines_obj, loc_nordnes.lines_obj, loc_user.lines_obj]
-    axNok.legend(lines, ["Nordnes", "Kronstad", "Markert plass"])
+    axNok.legend(legend_lines, ["Nordnes", "Kronstad", "Markert plass"])
     axNok.grid(linestyle='dashed')
 
     axNok.relim()
@@ -329,21 +460,21 @@ def plot_graph():
     #Plot Map of Bergen
     axBergen.axis('off')
 
-    if redraw_bergen:
-        axBergen.imshow(img)
-        redraw_bergen = False
+    # image of city map
+    global city_map_image
+    if city_map_image is None:
+        city_map_image = mpimg.imread('Bergen.jpg')
+        axBergen.imshow(city_map_image)
 
     axBergen.set_title("Kart Bergen")
     draw_circles_stations()
 
-    def show_contour_lines():
-        result = generate_grid_samples(days, nord_nox, kron_nox)
+    # Draw mean, or average, horizontal lines using correct styles
+    axNok.axhline(np.mean(nord_nox), color=UI.Colors.nordnes, linestyle='--', linewidth=1),
+    axNok.axhline(np.mean(kron_nox), color=UI.Colors.kronstad, linestyle='--', linewidth=1)
 
-        # Create a contour plot with smooth connected curves
-        #x = np.linspace(0, 200, 20)
-        #y = np.linspace(0, 150, 15)
-        #X, Y = np.meshgrid(x, y)
-        #Z = result
+    def show_contour_lines():
+        result = generate_grid_samples(nord_nox, kron_nox, app.data_processing_func)
 
         plt.figure(figsize=(20/2, 15/2))
 
@@ -351,32 +482,51 @@ def plot_graph():
         plt.colorbar(label='Elevation')
         plt.title('Topological Map with Smooth Contours')
         plt.gca().invert_yaxis()
-        #axNok.show()
-
-        print(result)
     # END show_contour_lines
 
-    show_contour_lines()
-    #if False:
-
-    # END if False
+    #show_contour_lines()
 
     plt.draw()
 
+"""
+    for line in hor_lines:
+        line.remove()
+"""
+
 plot_graph()
 
-# draw radiobutton interval
-listFonts = [12] * 5
-listColors = ['yellow'] * 5
-radio_button = RadioButtons(
-    axInterval,
-    list(string_to_days_interval_map.keys()),
-    label_props = {'color': listColors, 'fontsize' : listFonts},
-    radio_props = {'facecolor': listColors, 'edgecolor': listColors},
-    )
-axInterval.set_facecolor('darkblue')
+# draw radio button group, list_options is a map
+def create_radio_button_panel(ax, list_options, on_clicked):
+    num_options = len(list_options)
+    list_fonts = [10] * num_options
+    list_colors = ['#333333'] * num_options
+    radio_button = RadioButtons(
+        ax,
+        list_options,
+        label_props = {'color': list_colors, 'fontsize' : list_fonts},
+        radio_props = {'facecolor': list_colors, 'edgecolor': list_colors},
+        )
+    radio_button.on_clicked(on_clicked)
+    return radio_button
+# END create_radio_button_panel
 
-radio_button.on_clicked(set_days_interval_from_str)
+# Create two axes for the radio buttons (stacked vertically)
+axInterval1 = plt.axes([0.05, 0.6, 0.1, 0.2], facecolor = UI.RadioGroup.bg_color)  # First radio button group
+axInterval2 = plt.axes([0.05, 0.2, 0.1, 0.2], facecolor = UI.RadioGroup.bg_color)  # Second radio button group
+
+radio_data_process_func_select = create_radio_button_panel(
+    axInterval1,
+    list(string_to_data_process_func.keys()),
+    app.set_data_processing_func
+    )
+
+radio_interval_select = create_radio_button_panel(
+    axInterval2,
+    list(string_to_days_interval_map.keys()),
+    set_days_interval_from_str
+    )
+
+#--------- radio buttons done
 
 # noinspection PyTypeChecker
 plt.connect('button_press_event', on_click)
