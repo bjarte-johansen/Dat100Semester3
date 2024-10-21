@@ -56,8 +56,6 @@ def plot_app():
     # plot map (change key to plot APD or NOX)
     plot_map(KEY_NOX)
 
-    text_inputs = create_date_text_inputs(axGraph)
-
     # draw the plot
     plt.draw()
 
@@ -135,7 +133,7 @@ def create_date_text_inputs(ax):
 
     # Display initial text
     text_inputs = [
-        ax.text(30, 229 - 20, text_input_helpers[0].title + text_input_helpers[0].text, horizontalalignment='left', verticalalignment='center', fontsize=12),
+        ax.text(0, 0, text_input_helpers[0].title + text_input_helpers[0].text, horizontalalignment='left', verticalalignment='center', fontsize=12),
         #ax.text(30, 120, text_input_titles[1], horizontalalignment='left', verticalalignment='center', fontsize=12)
         ]
 
@@ -220,7 +218,7 @@ def create_date_text_inputs(ax):
     return text_inputs
 
 
-# connect button_press_event to on_click
+text_inputs = create_date_text_inputs(axInputPane)
 
 # noinspection PyTypeChecker
 plt.connect('button_press_event', on_click)
