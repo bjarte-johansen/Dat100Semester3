@@ -133,7 +133,7 @@ def create_date_text_inputs(ax):
 
     # Display initial text
     text_inputs = [
-        ax.text(0, 0, text_input_helpers[0].title + text_input_helpers[0].text, horizontalalignment='left', verticalalignment='center', fontsize=12),
+        ax.text(0, 0.8, text_input_helpers[0].title + text_input_helpers[0].text, horizontalalignment='left', verticalalignment='center', fontsize=12),
         #ax.text(30, 120, text_input_titles[1], horizontalalignment='left', verticalalignment='center', fontsize=12)
         ]
 
