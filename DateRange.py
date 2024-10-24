@@ -18,14 +18,12 @@ class DateRange:
     def get_duration_in_days(self):
         return get_number_of_days_between_dates(self.start_date, self.end_date)
 
-    def to_days_interval(self, zero_based = False) -> Tuple[int, int]:
-        zbo = 0 if zero_based else 1
-
+    def to_days_interval(self) -> Tuple[int, int]:
         start_of_year_date = datetime(self.start_date.year, 1, 1)
         num_days_into_year = get_number_of_days_between_dates(
             start_of_year_date,
             self.start_date
-            ) + zbo - 1
+            )
 
         return (
             num_days_into_year,

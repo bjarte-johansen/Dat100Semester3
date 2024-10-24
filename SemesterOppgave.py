@@ -6,6 +6,7 @@ TODO:
     - Count every year as being 365 days to avoid problems with leap years?
       This is mainly to avoid datehandling so amount of work for teacher is kept to a minimum
 """
+from time import strptime
 
 # ---------- imports ----------
 
@@ -28,11 +29,14 @@ def set_data_processing_func_from_str(str_func):
 
 def set_days_interval_from_str(str_period):
     # update date range
-    tmp = string_to_days_interval_map[str_period]
+    tmp = string_to_date_interval_map[str_period]
     app.set_date_range(tmp['start_date'], tmp['end_date'])
 
     # reset user-selected point
     loc_user.coordinates = None
+
+    text_input_map['text_input_start_date'].set_text("Dato start: " + app.date_range.start_date.strftime('%Y-%m-%d'))
+    text_input_map['text_input_end_date'].set_text("Dato slutt: " + app.date_range.end_date.strftime('%Y-%m-%d'))
 
     # plot graph
     plot_app()
@@ -43,8 +47,10 @@ def on_click(event) :
             loc_user.coordinates = (event.xdata, event.ydata)
             plot_app()
 
+
+# date range text inputs
 text_inputs = []
-# plot date range text inputs
+text_input_map = {}
 
 
 def plot_app():
@@ -97,7 +103,7 @@ def create_radio_button_panel_for_interval():
 
     radio_button = create_radio_button_panel(
         ax,
-        list(string_to_days_interval_map.keys()),
+        list(string_to_date_interval_map.keys()),
         set_days_interval_from_str
         )
     plt.draw()
@@ -116,8 +122,8 @@ def validate_date_input(date_str):
         return False
 
 def create_date_text_inputs(ax):
+    # returns the bounding box of a text object in data coordinates
     def get_bounding_box(text_obj):
-        """Returns the bounding box of a text object in data coordinates."""
         renderer = fig.canvas.get_renderer()
         bbox = text_obj.get_window_extent(renderer=renderer)  # Get in display (pixel) coordinates
         bbox_data = bbox.transformed(ax.transData.inverted())  # Convert to data coordinates
@@ -125,19 +131,29 @@ def create_date_text_inputs(ax):
 
     text_input_helpers = [
         SimpleNamespace(
-            text='2024-02-01,2024-04-01',
+            text='2024-02-01',
             bounds=None,
-            title="Dato start,slutt: ",
+            title="Dato start: ",
+        ),
+        SimpleNamespace(
+            text='2024-04-01',
+            bounds=None,
+            title="Dato slutt: ",
         )
     ]
 
     # Display initial text
     text_inputs = [
-        ax.text(0, 0.8, text_input_helpers[0].title + text_input_helpers[0].text, horizontalalignment='left', verticalalignment='center', fontsize=12),
-        #ax.text(30, 120, text_input_titles[1], horizontalalignment='left', verticalalignment='center', fontsize=12)
+        ax.text(0.0125, 0.85, text_input_helpers[0].title + text_input_helpers[0].text, horizontalalignment='left', verticalalignment='center', fontsize=12),
+        ax.text(0.0125, 0.7, text_input_helpers[1].title + text_input_helpers[1].text, horizontalalignment='left', verticalalignment='center', fontsize=12)
         ]
+    text_input_map = {
+        'text_input_start_date': text_inputs[0],
+        'text_input_end_date': text_inputs[1],
+    }
 
     text_input_helpers[0].bounds = get_bounding_box(text_inputs[0])
+    text_input_helpers[1].bounds = get_bounding_box(text_inputs[1])
 
     text_input_current = {
         'index': 0,
@@ -159,7 +175,7 @@ def create_date_text_inputs(ax):
                 continue
 
             # get bounds and test
-            bounds = text_input_helpers[i].bounds
+            bounds = text_input_helpers[i].bounds #(text_input_current['obj'])
             if bounds.contains(event.xdata, event.ydata):
                 text_input_current['index'] = i
                 text_input_current['obj'] = text_inputs[i]
@@ -167,26 +183,17 @@ def create_date_text_inputs(ax):
                 print("log: clicked on text input ", text_input_current['index'])
         pass
 
-    def on_submit(input_index, text):
-        dates = [s.strip() for s in text.split(',')]
-        if not validate_date_input(dates[0]):
-            print("ugyldig startdato")
-            return
-        if not validate_date_input(dates[1]):
-            print("ugyldig sluttdato")
-            return
-
-        dates = [datetime.strptime(d, "%Y-%m-%d") for d in dates]
-
-        if(dates[1] - dates[0]).days <= 0:
-            print("Sluttdato må være etter startdato")
-            return
-
-        print(f"startdato: {dates[0]}, sluttdato: {dates[1]}")
-        print(f"submit: {text} for input {input_index}")
-
-        app.set_date_range(dates[0], dates[1])
+    def update_date_range(start, end):
+        app.set_date_range(start, end)
         plot_app()
+
+    def on_submit(input_index, text):
+        new_date = datetime.strptime(text, '%Y-%m-%d')
+
+        if input_index == 0:
+            update_date_range(new_date, app.date_range.end_date)
+        elif input_index == 1:
+            update_date_range(app.date_range.start_date, new_date)
 
     def on_key(event):
         o = text_input_current['obj']
@@ -215,10 +222,14 @@ def create_date_text_inputs(ax):
     fig.canvas.mpl_connect('button_press_event', on_click)
     fig.canvas.mpl_connect('key_press_event', on_key)
 
-    return text_inputs
+    return text_inputs, text_input_map
 
 
-text_inputs = create_date_text_inputs(axInputPane)
+text_inputs, text_input_map = create_date_text_inputs(axInputPane)
+
+text_input_map['text_input_start_date'].set_text("Dato start: " + app.date_range.start_date.strftime('%Y-%m-%d'))
+text_input_map['text_input_end_date'].set_text("Dato slutt: " + app.date_range.end_date.strftime('%Y-%m-%d'))
+
 
 # noinspection PyTypeChecker
 plt.connect('button_press_event', on_click)
