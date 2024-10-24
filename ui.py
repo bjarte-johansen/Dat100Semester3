@@ -40,15 +40,16 @@ def set_render_option_from_str(input_str):
 	plot_app()
 
 def set_days_interval_from_str(str_period):
-	# update date range
-	tmp = string_to_date_interval_map[str_period]
-	app.set_date_range(tmp['start_date'], tmp['end_date'])
-
 	# reset user-selected point
 	loc_user.coordinates = None
 
-	uihelper.text_input_map['text_input_start_date'].set_text("Dato start: " + app.date_range.start_date.strftime('%Y-%m-%d'))
-	uihelper.text_input_map['text_input_end_date'].set_text("Dato slutt: " + app.date_range.end_date.strftime('%Y-%m-%d'))
+	# update app date range
+	tmp = string_to_date_interval_map[str_period]
+	app.set_date_range(tmp['start_date'], tmp['end_date'])
+
+	# update text inputs
+	uihelper.text_input_map['start_date'].set_text(uihelper.text_input_map['start_date'].custom_title + app.date_range.start_date.strftime('%Y-%m-%d'))
+	uihelper.text_input_map['end_date'].set_text(uihelper.text_input_map['end_date'].custom_title + app.date_range.end_date.strftime('%Y-%m-%d'))
 
 	# plot graph
 	plot_app()
@@ -179,10 +180,10 @@ def create_date_text_inputs(ax):
 	fig.canvas.mpl_connect('button_press_event', on_click)
 	fig.canvas.mpl_connect('key_press_event', on_key)
 
-	return text_input_list, text_input_map
+	return text_input_map
 
 def init_gui():
-	uihelper.text_input_list, uihelper.text_input_map = create_date_text_inputs(axInputPane)
+	uihelper.text_input_map = create_date_text_inputs(axInputPane)
 
 	uihelper.radio_buttons = [
 		create_radio_button_panel_for_processing_func(set_data_processing_func_from_str),
