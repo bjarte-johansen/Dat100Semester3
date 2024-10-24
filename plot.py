@@ -119,18 +119,33 @@ def plot_fixed_locations(axis, legend_lines, number_of_days_to_plot, day_index_l
         axis.axhline(np.mean(loc.data_view[data_key]), color=loc.color, linestyle='--', linewidth=1)
 # END plot_fixed_locations
 
+# ----- grid sampling functions -----
 
+def invalidate_grid_samples():
+    get_grid_samples.invalidate = True
+
+def get_grid_samples():
+    if not hasattr(get_grid_samples, "invalidated"):
+        get_grid_samples.invalidated = True
+
+    if get_grid_samples.invalidated:
+        get_grid_samples.result = generate_grid_samples(
+            app.map_dimensions,
+            app.grid_resolutions,
+            fixed_locations,
+            )
+        get_grid_samples.invalidated = False
+
+    return get_grid_samples.result
+
+#
 def plot_contour_lines(data_key):
     # update locations measurement_value
     for loc in fixed_locations:
         loc.measurement_value = app.data_processing_func(loc.data_view[data_key])
 
     # generate grid samples for contour plot
-    result = generate_grid_samples(
-        app.map_dimensions,
-        app.grid_resolutions,
-        fixed_locations,
-        )
+    result = get_grid_samples()
 
     #x = np.linspace(0, app.map_dimensions[0], app.grid_resolutions[0])
     #y = np.linspace(0, app.map_dimensions[1], app.grid_resolutions[1])
@@ -149,17 +164,14 @@ def plot_contour_lines(data_key):
     #plt.colorbar(contour, ax=axCityMap, label='Elevation')
 # END show_contour_lines
 
+
 def plot_heightmap_boxed(axis, data_key):
     # update locations measurement_value
     for loc in fixed_locations:
         loc.measurement_value = app.data_processing_func(loc.data_view[data_key])
 
     # generate grid samples for contour plot
-    result = generate_grid_samples(
-        app.map_dimensions,
-        app.grid_resolutions,
-        fixed_locations,
-        )
+    result = get_grid_samples()
 
     print("result,size: ", result.shape)
     print("grid_res: ", app.grid_resolutions)
@@ -168,15 +180,22 @@ def plot_heightmap_boxed(axis, data_key):
     box_height = app.map_dimensions[1] // app.grid_resolutions[1]
 
     # define colormap
-    cmap = plt.cm.get_cmap('plasma')
+    #cmap = plt.cm.get_cmap('plasma')
 
     # Define a custom colormap from green to red
-    # cmap = LinearSegmentedColormap.from_list("GreenRed", ["green", "red"])
+    cmap = LinearSegmentedColormap.from_list("GreenRed", ["green", "red"])
 
+    """
     def get_x(i):
         return i + 1 if i + 1 >= app.grid_resolutions - 1 else i
     def get_y(i):
         return i + 1 if i + 1 >= app.grid_resolutions - 1 else i
+    """
+
+    # Normalize the value to fit the colormap range
+    result_min = result.min()
+    result_max = result.max()
+    result_range = result_max - result_min
 
     # iterate over virtual boxes
     for i in range(app.grid_resolutions[1]):
@@ -190,21 +209,23 @@ def plot_heightmap_boxed(axis, data_key):
             ]
 
             # Get the max or min of the corner values (choose either min or max)
-            box_value = max(box_corners)  # Change to min(box_corners) if needed
+            box_value = np.mean(box_corners)  # Change to min(box_corners) if needed
 
-            # Normalize the value to fit the colormap range
-            norm_value = (box_value - result.min()) / (result.max() - result.min())
+            norm_value = (box_value - result_min) / result_range
 
             # Get the color from the colormap
             color = cmap(norm_value)
-            if norm_value < 0.3:
-                continue
+            if norm_value < 0.5:
+                color = cmap(0.0)
+            else:
+                color = cmap(1.0)
 
             # Create a rectangle for the box
-            rect = Rectangle((j * box_height - 1, i * box_width - 1), box_height - 1, box_width - 1, color=color, alpha=0.3, edgecolor='black')
+            rect = Rectangle((j * box_height - 1, i * box_width - 1), box_height - 1, box_width - 1, color=color, alpha=0.3)
 
             # Add the rectangle to the plot
             axis.add_patch(rect)
+
 
 def plot_map(data_key):
     # clear axis
@@ -225,12 +246,20 @@ def plot_map(data_key):
     # plot map markers for locations and user-selected point
     plot_location_markers()
 
-    # plot map contour lines
-    plot_contour_lines(data_key)
+    print("plot render options: ", [app.plot_countour_lines, app.plot_heightmap_boxed])
 
-    # plot heightmap boxed
-    #plot_heightmap_boxed(axCityMap, data_key)
-pass
+    # rendering methods that require grid samples
+    if app.plot_countour_lines or app.plot_heightmap_boxed:
+        invalidate_grid_samples()
+
+        if app.plot_countour_lines:
+            # plot map contour lines
+            plot_contour_lines(data_key)
+
+        if app.plot_heightmap_boxed:
+            # plot heightmap boxed
+            plot_heightmap_boxed(axCityMap, data_key)
+
 
 def plot_graphs(axis, data_key):
     # clear axis
@@ -261,3 +290,17 @@ def plot_graphs(axis, data_key):
 
     #axis.relim()
     #axis.autoscale_view()
+
+
+def plot_app():
+    # plot NOX graphs
+    plot_graphs(ax_nox, KEY_NOX)
+
+    # plot NOX graphs
+    plot_graphs(ax_apd, KEY_APD)
+
+    # plot map (change key to plot APD or NOX)
+    plot_map(KEY_NOX)
+
+    # draw the plot
+    plt.draw()

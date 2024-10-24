@@ -2,6 +2,7 @@ import locale
 
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
+from matplotlib.widgets import RadioButtons
 
 from types import SimpleNamespace
 
@@ -31,14 +32,17 @@ class UI:
         bryggen: str = "#6a994e"            # color of bryggen
         user:str = "#C453FF"                # color of user-selected point
 
+class EmptyClass:
+    pass
 
 
+"""
 def map_to_range(value, min_in, max_in, min_out, max_out):
     if max_in == min_in:
         raise ValueError("min_in and max_in cannot be the same value")
 
     return min_out + (value - min_in) * (max_out - min_out) / (max_in - min_in)
-
+"""
 
 def hide_axis_graphics(ax):
     ax.set_xticks([])
@@ -59,72 +63,20 @@ KEY_APD = 'APD'
 locale.setlocale(locale.LC_ALL, 'nb_NO.UTF-8')
 
 #create figure and 3 axis
-fig = plt.figure(figsize=(13, 9))
 
-class AxisRectangle:
-    def __init__(self, x=0, y=0, width=0, height=0):
-        self.x = x * width
-        self.y = height - y * height
-        self.width = width
-        self.height = height
+# Create a figure and multiple subplots (2 rows, 2 columns)
+#fig, axs = plt.subplots(2, 2, figsize=(10, 8))  # 2x2 grid of subplots
 
-    def min_x(self):
-        return self.x
-    def max_x(self):
-        return self.x + self.width
-    def min_y(self):
-        return self.y
-    def max_y(self):
-        return self.y + self.height
+class AUI:
+    class Axis:
+        class InputPane:
+            height = 0.175
 
-    def to_array(self):
-        return [self.min_x(), self.min_y(), self.max_x(), self.max_y()]
+# ---------- setup environment ----------
 
-# Get figure size in pixels
+fig = plt.figure(figsize=(18, 7))
 
-def get_axis_bounding_box(axis):
-    # Get figure size in pixels (width, height)
-    fig_size_inch = fig.get_size_inches()
-    fig_size_pixels = fig.get_size_inches() * fig.dpi
-    print("fig_size_inch: ", fig_size_inch)
-    print("fig_size_pixels: ", fig_size_pixels)
-
-    fig_size = fig.get_size_inches() * fig.dpi
-    print(f"fig size: {float(fig_size[0]), float(fig_size[1])}")
-
-    #bbox = axis.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-    #print(f"boox in pixel coordinates: {bbox}")
-
-    # Transform the bounding box to figure-relative coordinates (normalized)
-    bbox = axis.get_window_extent()
-
-    bb = bbox.transformed(fig.dpi_scale_trans.inverted())
-    #print(f"boox in normalized figure coords: {bb}")
-
-    bb_norm = [
-        bb.x0 / fig_size_inch[0],
-        bb.y0 / fig_size_inch[1],
-        bb.width / fig_size_inch[0],
-        bb.height / fig_size_inch[1]
-    ]
-    print("bb_norm", *bb_norm)
-
-    bb_pixel = [
-        bb_norm[0]  * fig_size_pixels[0],
-        (1 - bb_norm[1]) * fig_size_pixels[1],
-        bb_norm[2] * fig_size_pixels[0],
-        bb_norm[3] * fig_size_pixels[1],
-    ]
-    print("bb_pixel", *bb_pixel)
-# END get_axis_bounding_box
-
-"""
-axInputPane = fig.add_axes((0.05, 0.725, 0.9, 0.015))
-axInputPane.set_facecolor('red')
-hide_axis_graphics(axInputPane)
-"""
-
-axInputPane = fig.add_axes((0.05, 0.75, 0.9, 0.20))
+axInputPane = fig.add_axes((0.05, 0.75, 0.9, AUI.Axis.InputPane.height))
 axInputPane.set_facecolor('#00000011')
 hide_axis_graphics(axInputPane)
 
@@ -132,13 +84,16 @@ hide_axis_graphics(axInputPane)
 
 #exit()
 
-axGraph = fig.add_axes((0.05, 0.05, 0.40, 0.5957))
-axGraph.set_facecolor('#FFFFFF77')
+ax_nox = fig.add_axes((0.05, 0.05, 0.25, 0.5957))
+ax_nox.set_facecolor('#FFFFFF77')
 
-axCityMap = fig.add_axes((0.50, 0.05, 0.45, 0.7))
+ax_apd = fig.add_axes((0.35, 0.05, 0.25, 0.5957))
+ax_apd.set_facecolor('#FFFFFF77')
 
-#axGraph.set_xlim(0, 1000)
-#axGraph.set_ylim(0, 800)
+axCityMap = fig.add_axes((0.65, 0.05, 0.25, 0.7))
+
+#ax_nox.set_xlim(0, 1000)
+#ax_nox.set_ylim(0, 800)
 
 # read image of bergen
 city_map_image = mpimg.imread('Bergen.jpg')
@@ -163,6 +118,13 @@ string_to_data_process_func_map = {
     'default': np.mean,
 }
 
+#define string -> render option
+string_to_render_option_map = {
+    'Ingen': 'none',
+    'Kontur': 'plot_countour_lines',
+    'Verdibokser': 'plot_heightmap_boxed',
+}
+
 # flag to tell if we are in debug mode
 DEBUG = True
 
@@ -178,6 +140,11 @@ class Application:
         self.map_dimensions = (2000, 1500)
         self.date_range = DateRange(None, None)
         self.days_interval = (0, 0)
+
+        self.plot_countour_lines = False
+        self.plot_heightmap_boxed = False
+
+        self.plot_gui_callback = None
 
         tmp = string_to_date_interval_map['En måned']
         self.set_date_range(tmp['start_date'], tmp['end_date'])
@@ -213,17 +180,38 @@ class Application:
 
         if DEBUG:
             print(f"data processing func: {str_func_name}, {self.data_processing_func}")
+
+    def update_gui(self):
+        if self.plot_gui_callback is not None:
+            self.plot_gui_callback()
+
 # END Application
 
 # create application instance
 app = Application()
 
-#axGraph.set_xlim(0, app.map_dimensions[0])  # Example limits, adjust as needed
-#axGraph.set_ylim(app.map_dimensions[1], 0)
+def plot_gui_callback():
+    print("hello!")
+
+app.plot_gui_callback = plot_gui_callback()
+
+#ax_nox.set_xlim(0, app.map_dimensions[0])  # Example limits, adjust as needed
+#ax_nox.set_ylim(app.map_dimensions[1], 0)
 
 # Equal scaling on both axes
-#axGraph.set_aspect('equal', 'box')
+#ax_nox.set_aspect('equal', 'box')
 
+
+#----- utility functions and objects
+
+# get a successive random seeds starting at 1
+def get_next_rand_seed():
+    if not hasattr(get_next_rand_seed, "counter"):
+        get_next_rand_seed.counter = 0  # Static variable
+
+    # Increment the static variable
+    get_next_rand_seed.counter += 1
+    return get_next_rand_seed.counter
 
 
 #----- define location objects
@@ -235,8 +223,8 @@ loc_kronstad = SimpleNamespace(
     name = "Kronstad",
     coordinates = (1250,1400),
     historical_data = {
-		KEY_NOX: generate_sample_data(intensity=1.0, seed=2, num_points=367),
-		KEY_APD: generate_sample_data(intensity=0.4, seed=2, num_points=367),
+		KEY_NOX: generate_sample_data(intensity=1.0, seed=get_next_rand_seed(), num_points=367),
+		KEY_APD: generate_sample_data(intensity=0.04, seed=get_next_rand_seed(), num_points=367),
 	},
     data_view = {KEY_NOX: [], KEY_APD: []},
     measurement_value = 0,
@@ -247,8 +235,8 @@ loc_nordnes = SimpleNamespace(
     name = "Nordnes",
     coordinates = (350,100),
 	historical_data = {
-		KEY_NOX: generate_sample_data(intensity=0.3, seed=1, num_points=367),
-		KEY_APD: generate_sample_data(intensity=0.15, seed=1, num_points=367),
+		KEY_NOX: generate_sample_data(intensity=0.3, seed=get_next_rand_seed(), num_points=367),
+		KEY_APD: generate_sample_data(intensity=0.015, seed=get_next_rand_seed(), num_points=367),
 	},
     data_view = {KEY_NOX: [], KEY_APD: []},
     measurement_value = 0,
@@ -259,8 +247,8 @@ loc_bryggen = SimpleNamespace(
     name = "Bryggen",
     coordinates = (550,500),
 	historical_data = {
-		KEY_NOX: generate_sample_data(intensity=0.7, seed=3, num_points=367),
-		KEY_APD: generate_sample_data(intensity=0.25, seed=3, num_points=367),
+		KEY_NOX: generate_sample_data(intensity=0.7, seed=get_next_rand_seed(), num_points=367),
+		KEY_APD: generate_sample_data(intensity=0.025, seed=get_next_rand_seed(), num_points=367),
 	},
 	data_view = {KEY_NOX: [], KEY_APD: []},
     measurement_value = 0,

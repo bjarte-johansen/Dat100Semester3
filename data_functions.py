@@ -31,7 +31,7 @@ def generate_sample_data(intensity:float, seed:int=0, num_points:int=367) -> [in
         center = centervals[int(index / 30)]
         dx = min(2.0, max(0.5, value / center ))
         value = value + randint(1,5) / dx if inc else value - randint( 1, 5) * dx
-        value = max(10, value)
+        #value = max(10, value)
         value_arr[index] = value
     return value_arr
 # END GenereateRandomYearDataList
@@ -96,7 +96,7 @@ def get_estimated_value_at_point_ext(locations, pt):
     return np.sum([(weights[i] / total_weight) * locations[i].measurement_value for i in range(len(locations))])
 # END get_estimated_value_at_point
 
-def get_estimated_value_at_point(locations, marked_point, power=2):
+def get_estimated_value_at_point_ext(locations, marked_point, power=4):
     # Initialize variables for total distance and the weighted NOX value
     total_weight = 0
     weighted_value = 0
@@ -120,9 +120,9 @@ def get_estimated_value_at_point(locations, marked_point, power=2):
     # Calculate the final NOX value as the weighted average
     return (weighted_value / total_weight) if total_weight != 0 else 0
 
-"""
+
 #estimate NOX value based on the two measuring stations
-def get_estimated_value_at_point_ext(locations, pt):
+def get_estimated_value_at_point(locations, pt, power=1):
     dist_to_point = [math.dist(loc.coordinates, pt) for loc in locations]
 
     total_dist_to_point = sum(dist_to_point)
@@ -132,9 +132,8 @@ def get_estimated_value_at_point_ext(locations, pt):
 
     total_station_to_station = sum(dist_station_station)
 
-    #val = sum([(1 - (dist_to_point[i] / total_dist_to_point)) * locations[i].measurement_value for i in range(num_locations)])
-    #val = val * (total_station_to_station / total_dist_to_point) ** 4
+    val = sum([(1 - (dist_to_point[i] / total_dist_to_point)) * locations[i].measurement_value for i in range(num_locations)])
+    val = val * (total_station_to_station / total_dist_to_point) ** power
 
     return val
 # END get_estimated_value_at_point_ext
-"""
