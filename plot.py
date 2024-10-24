@@ -173,26 +173,14 @@ def plot_heightmap_boxed(axis, data_key):
     # generate grid samples for contour plot
     result = get_grid_samples()
 
-    print("result,size: ", result.shape)
-    print("grid_res: ", app.grid_resolutions)
-
+    # calculate box width and height
     box_width = app.map_dimensions[0] // app.grid_resolutions[0]
     box_height = app.map_dimensions[1] // app.grid_resolutions[1]
 
-    # define colormap
-    #cmap = plt.cm.get_cmap('plasma')
-
-    # Define a custom colormap from green to red
+    # define a custom colormap from green to red
     cmap = LinearSegmentedColormap.from_list("GreenRed", ["green", "red"])
 
-    """
-    def get_x(i):
-        return i + 1 if i + 1 >= app.grid_resolutions - 1 else i
-    def get_y(i):
-        return i + 1 if i + 1 >= app.grid_resolutions - 1 else i
-    """
-
-    # Normalize the value to fit the colormap range
+    # normalize the value to fit the colormap range
     result_min = result.min()
     result_max = result.max()
     result_range = result_max - result_min
@@ -245,8 +233,6 @@ def plot_map(data_key):
 
     # plot map markers for locations and user-selected point
     plot_location_markers()
-
-    print("plot render options: ", [app.plot_countour_lines, app.plot_heightmap_boxed])
 
     # rendering methods that require grid samples
     if app.plot_countour_lines or app.plot_heightmap_boxed:

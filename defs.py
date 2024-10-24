@@ -74,15 +74,23 @@ class AUI:
 
 # ---------- setup environment ----------
 
+
 fig = plt.figure(figsize=(18, 7))
+
+def set_window_size(new_x:int, new_y:int, width:int, height:int):
+    fig.canvas.manager.window.wm_geometry(f"{width}x{height}+{new_x}+{new_y}")
+
+set_window_size(1950, 50, 1600, 700)
+
+# Set only the x and y position, keeping the width and height the same
+#manager.window.setGeometry(2300, 200, width, height)  # Set x=100, y=100
 
 axInputPane = fig.add_axes((0.05, 0.75, 0.9, AUI.Axis.InputPane.height))
 axInputPane.set_facecolor('#00000011')
 hide_axis_graphics(axInputPane)
 
-#get_axis_bounding_box(axInputPane)
 
-#exit()
+# create 3 axis for graphs + map
 
 ax_nox = fig.add_axes((0.05, 0.05, 0.25, 0.5957))
 ax_nox.set_facecolor('#FFFFFF77')
@@ -92,8 +100,7 @@ ax_apd.set_facecolor('#FFFFFF77')
 
 axCityMap = fig.add_axes((0.65, 0.05, 0.25, 0.7))
 
-#ax_nox.set_xlim(0, 1000)
-#ax_nox.set_ylim(0, 800)
+
 
 # read image of bergen
 city_map_image = mpimg.imread('Bergen.jpg')
@@ -125,10 +132,15 @@ string_to_render_option_map = {
     'Verdibokser': 'plot_heightmap_boxed',
 }
 
+# define string -> map overlay
+string_to_map_overlay_map = {
+    'NOX': KEY_NOX,
+    'APD': KEY_APD,
+}
+
+
 # flag to tell if we are in debug mode
 DEBUG = True
-
-
 
 # ---------- Application class ----------
 
@@ -145,6 +157,8 @@ class Application:
         self.plot_heightmap_boxed = False
 
         self.plot_gui_callback = None
+
+        self.map_overlay_key = KEY_NOX
 
         tmp = string_to_date_interval_map['En måned']
         self.set_date_range(tmp['start_date'], tmp['end_date'])
@@ -164,7 +178,7 @@ class Application:
         self.date_range.end_date = end_date
 
         self.days_interval = self.date_range.to_days_interval()
-        print(self.days_interval)
+        #print(self.days_interval)
 
         # optimally we should have a callback here or call to plot_app
         # we didnt have time to implement this, so called must call
@@ -190,16 +204,6 @@ class Application:
 # create application instance
 app = Application()
 
-def plot_gui_callback():
-    print("hello!")
-
-app.plot_gui_callback = plot_gui_callback()
-
-#ax_nox.set_xlim(0, app.map_dimensions[0])  # Example limits, adjust as needed
-#ax_nox.set_ylim(app.map_dimensions[1], 0)
-
-# Equal scaling on both axes
-#ax_nox.set_aspect('equal', 'box')
 
 
 #----- utility functions and objects

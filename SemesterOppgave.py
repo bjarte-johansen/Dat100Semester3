@@ -29,7 +29,14 @@ def on_click(event) :
 
 #---------- UI construction ----------
 
-# date range text inputs
+def plot_gui_callback():
+    plot_app()
+
+app.plot_gui_callback = plot_gui_callback()
+
+
+
+# ---------- Declare text helpers ----------------
 
 from ui import init_gui, uihelper
 
