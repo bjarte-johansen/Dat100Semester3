@@ -226,10 +226,10 @@ def plot_map(data_key):
     plot_location_markers()
 
     # plot map contour lines
-    #plot_contour_lines(data_key)
+    plot_contour_lines(data_key)
 
     # plot heightmap boxed
-    plot_heightmap_boxed(axCityMap, data_key)
+    #plot_heightmap_boxed(axCityMap, data_key)
 pass
 
 def plot_graphs(axis, data_key):

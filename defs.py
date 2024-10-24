@@ -150,7 +150,7 @@ string_to_date_interval_map = {
     '2. Kvartal':   {'start_date': datetime(2024, 4, 1), 'end_date': datetime(2024, 7, 1)},
     '3. Kvartal':   {'start_date': datetime(2024, 7, 1), 'end_date': datetime(2024, 10, 1)},
     '4. Kvartal':   {'start_date': datetime(2024, 10, 1), 'end_date': datetime(2025, 1, 1)},
-    '14 dager':   {'start_date': datetime(2024, 10, 10), 'end_date': datetime(2024, 11, 10)},
+    'En måned':   {'start_date': datetime(2024, 10, 10), 'end_date': datetime(2024, 11, 10)},
     # TODO add more options if we dont do other ways of selecting date range
 }
 
@@ -179,7 +179,7 @@ class Application:
         self.date_range = DateRange(None, None)
         self.days_interval = (0, 0)
 
-        tmp = string_to_date_interval_map['14 dager']
+        tmp = string_to_date_interval_map['En måned']
         self.set_date_range(tmp['start_date'], tmp['end_date'])
 
     def get_days_interval_duration(self):
