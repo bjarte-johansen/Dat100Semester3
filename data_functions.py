@@ -103,21 +103,17 @@ def get_estimated_value_at_point_alt(locations, marked_point, power=4):
     # Iterate over the stations (locations)
     for location in locations:
         # Calculate the distance between the marked point and the station
-        dist = math.dist(location.coordinates, marked_point) + 1e-06
-
-        # Avoid division by zero if the marked point is exactly at a station
-        #if dist == 0:
-            #return location.measurement_value  # If exactly at the station, return its NOX value
+        dist = math.dist(location.coordinates, marked_point) + 1e-03 # add small value to avoid division by zero
 
         # Calculate the weight based on the distance raised to the given power
-        weight = (1 / dist) ** power
+        weight = 1 / (dist ** power)
         total_weight += weight
 
         # Accumulate the weighted NOX values
         weighted_value += weight * location.measurement_value
 
     # Calculate the final NOX value as the weighted average
-    return (weighted_value / total_weight) if total_weight != 0 else 0
+    return (weighted_value / (total_weight + 1e-03)) if total_weight != 0 else 0
 # END get_estimated_value_at_point_ext
 
 
@@ -125,7 +121,7 @@ def get_estimated_value_at_point_alt(locations, marked_point, power=4):
 def get_estimated_value_at_point(locations, pt, power=1):
     dist_to_point = [math.dist(loc.coordinates, pt) for loc in locations]
 
-    total_dist_to_point = sum(dist_to_point)
+    total_dist_to_point = sum(dist_to_point) + 1E-03        # add small value to avoid division by zero
 
     num_locations = len(locations)
     dist_station_station = [math.dist(locations[i].coordinates, locations[(i + 1) % num_locations].coordinates) for i in range(num_locations)]
