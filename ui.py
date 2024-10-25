@@ -174,18 +174,13 @@ def create_date_text_inputs(ax):
 				active_text_input.index = i
 				print("log: clicked on text input ", active_text_input.index)
 
-	def update_date_range(start, end):
-		app.set_date_range(start, end)
-
-		app.render()
-
 	def on_submit(input_index, text):
 		new_date = datetime.strptime(text, '%Y-%m-%d')
 
 		if input_index == 0:
-			update_date_range(new_date, app.date_range.end_date)
+			app.set_date_range(new_date, app.date_range.end_date)
 		elif input_index == 1:
-			update_date_range(app.date_range.start_date, new_date)
+			app.set_date_range(app.date_range.start_date, new_date)
 
 	def on_key(event):
 		# check for valid text input
