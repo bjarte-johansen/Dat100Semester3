@@ -32,8 +32,13 @@ class UI:
         bryggen: str = "#6a994e"            # color of bryggen
         user:str = "#C453FF"                # color of user-selected point
 
+
+
+# ---------- utility functions ----------
+
 class EmptyClass:
     pass
+
 
 
 """
@@ -44,13 +49,18 @@ def map_to_range(value, min_in, max_in, min_out, max_out):
     return min_out + (value - min_in) * (max_out - min_out) / (max_in - min_in)
 """
 
-def hide_axis_graphics(ax):
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.spines['bottom'].set_visible(False)
-    ax.spines['left'].set_visible(False)
+# function to hide axis graphics
+def hide_axis_graphics(ax, hide_ticks=True, hide_spines=True):
+    if hide_ticks:
+        ax.set_xticks([])
+        ax.set_yticks([])
+
+    if hide_spines:
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['bottom'].set_visible(False)
+        ax.spines['left'].set_visible(False)
+
 
 
 # ---------- setup environment ----------
@@ -65,7 +75,7 @@ locale.setlocale(locale.LC_ALL, 'nb_NO.UTF-8')
 #create figure and 3 axis
 
 # Create a figure and multiple subplots (2 rows, 2 columns)
-#fig, axs = plt.subplots(2, 2, figsize=(10, 8))  # 2x2 grid of subplots
+#fig, axs = plt.subplots(1, 3, figsize=(10, 8))  # 2x2 grid of subplots
 
 class AUI:
     class Axis:
@@ -77,33 +87,42 @@ class AUI:
 
 fig = plt.figure(figsize=(18, 7))
 
+# set window size
 def set_window_size(new_x:int, new_y:int, width:int, height:int):
     fig.canvas.manager.window.wm_geometry(f"{width}x{height}+{new_x}+{new_y}")
 
 set_window_size(1950, 50, 1600, 700)
 
-# Set only the x and y position, keeping the width and height the same
-#manager.window.setGeometry(2300, 200, width, height)  # Set x=100, y=100
-
-axInputPane = fig.add_axes((0.05, 0.75, 0.9, AUI.Axis.InputPane.height))
-axInputPane.set_facecolor('#00000011')
-hide_axis_graphics(axInputPane)
+# create axis for input pane
+ax_input_pane = fig.add_axes((0.05, 0.8125, 0.9, AUI.Axis.InputPane.height))
+ax_input_pane.set_facecolor('#00000000')
+hide_axis_graphics(ax_input_pane)
 
 
 # create 3 axis for graphs + map
-
 ax_nox = fig.add_axes((0.05, 0.05, 0.25, 0.5957))
 ax_nox.set_facecolor('#FFFFFF77')
 
 ax_apd = fig.add_axes((0.35, 0.05, 0.25, 0.5957))
 ax_apd.set_facecolor('#FFFFFF77')
 
-axCityMap = fig.add_axes((0.65, 0.05, 0.25, 0.7))
+ax_city_map = fig.add_axes((0.65, 0.05, 0.30, 0.65))
 
 
 
 # read image of bergen
 city_map_image = mpimg.imread('Bergen.jpg')
+
+
+
+# ---------- define constants ----------
+
+MAX_DAYS_TO_RENDER_WITH_DAYS_TICKS = 65         # maximum number of days to render with days ticks
+MINIMUM_VALUE_FOR_HEIGHTMAP_BOXED = 0.5         # threshold for heightmap boxed rendering
+
+
+
+# ---------- define maps, used by radio button / checkbox groups ----------
 
 # define string -> date range
 string_to_date_interval_map = {
@@ -113,11 +132,11 @@ string_to_date_interval_map = {
     '3. Kvartal':   {'start_date': datetime(2024, 7, 1), 'end_date': datetime(2024, 10, 1)},
     '4. Kvartal':   {'start_date': datetime(2024, 10, 1), 'end_date': datetime(2025, 1, 1)},
     'En måned':   {'start_date': datetime(2024, 10, 10), 'end_date': datetime(2024, 11, 10)},
-    # TODO add more options if we dont do other ways of selecting date range
+
 }
 
-# define string -> data processing func
-string_to_data_process_func_map = {
+# define string -> data fold func
+string_to_data_fold_func_map = {
     'min': np.min,
     'max': np.max,
     'mean': np.mean,
@@ -139,35 +158,60 @@ string_to_map_overlay_map = {
 }
 
 
-# flag to tell if we are in debug mode
-DEBUG = True
 
 # ---------- Application class ----------
 
 class Application:
     def __init__(self):
-        self.current_year = datetime.now().year
-        self.data_processing_func = np.mean
-        self.grid_resolutions = (20 * 2, 15 * 2)
-        self.map_dimensions = (2000, 1500)
-        self.date_range = DateRange(None, None)
+        #self.current_year = datetime.now().year         # year
+        self.data_fold_func = np.mean             # reduce array -> value (for get_estimated_value_at_point)
+        self.grid_resolutions = (20 * 2, 15 * 2)        # resolution of grid for contour/heightmap etc
+        self.map_dimensions = (2000, 1500)              # dimensions of map
+        self.date_range = DateRange(None, None)         # date range
         self.days_interval = (0, 0)
+        self.on_date_range_change = None                # callback for date range change
 
-        self.plot_countour_lines = False
-        self.plot_heightmap_boxed = False
+        self.plot_countour_lines = False                # plot contour lines
+        self.plot_heightmap_boxed = False               # plot heightmap as boxed
 
-        self.plot_gui_callback = None
+        self.plot_gui_callback = None                   # callback to plot gui
 
-        self.map_overlay_key = KEY_NOX
+        self.map_overlay_key = KEY_NOX                  # data_key to display contour / heightmap etc
 
-        tmp = string_to_date_interval_map['En måned']
+        tmp = string_to_date_interval_map['År']
         self.set_date_range(tmp['start_date'], tmp['end_date'])
 
+    def invalidate_graph_axis(self, render:bool=False):
+        ax_nox.clear()
+        ax_apd.clear()
+
+        if self.on_date_range_change:
+            self.on_date_range_change()
+
+        """
+        for loc in all_locations:
+            for data_key in loc.data_lines:
+                loc.data_lines[data_key] = None
+        """
+
+        if render:
+            print("attempt to call render via ", __name__)
+            self.render()
+
+    def get_current_year(self):
+        # not static global method for logical grouping of code
+        return datetime.now().year
+
+    # self-explanatory
     def get_days_interval_duration(self):
         return self.days_interval[1] - self.days_interval[0] + 1
 
+    # self-explanatory
     def set_date_range(self, start_date:datetime, end_date:datetime):
         print(f"set_date_range called, start: {start_date}, end: {end_date}")
+        #raise NotImplementedError("set_date_range not implemented")
+
+        self.invalidate_graph_axis()
 
         # validate input
         if start_date is None: print("Ugyldig startdato"); return
@@ -178,24 +222,28 @@ class Application:
         self.date_range.end_date = end_date
 
         self.days_interval = self.date_range.to_days_interval()
-        #print(self.days_interval)
 
-        # optimally we should have a callback here or call to plot_app
-        # we didnt have time to implement this, so called must call
-        # plot_app explicitly after calling this function
+        # fire on_date_range_change callback
+        if self.on_date_range_change:
+            self.on_date_range_change()
+
+        # render app
+        self.render()
 
 
-    # update processing function, default to np.mean
-    def set_data_processing_func(self, str_func_name):
-        self.data_processing_func = string_to_data_process_func_map.get(
-            str_func_name,
-            string_to_data_process_func_map.get('default', np.mean)
-        )
+    # update function for reduce array -> value, default to np.mean
+    def set_data_fold_callback(self, str_func_name):
+        default_data_reduction_func = string_to_data_fold_func_map.get('default', np.mean)
+        self.data_fold_func = string_to_data_fold_func_map.get(str_func_name, default_data_reduction_func)
 
-        if DEBUG:
-            print(f"data processing func: {str_func_name}, {self.data_processing_func}")
+        # render app
+        self.render()
 
-    def update_gui(self):
+    # render app
+    def render(self):
+        # allways force re-calculation of grid samples, its not implemented thoroughly
+        # invalidate_grid_samples()
+
         if self.plot_gui_callback is not None:
             self.plot_gui_callback()
 
@@ -228,9 +276,10 @@ loc_kronstad = SimpleNamespace(
     coordinates = (1250,1400),
     historical_data = {
 		KEY_NOX: generate_sample_data(intensity=1.0, seed=get_next_rand_seed(), num_points=367),
-		KEY_APD: generate_sample_data(intensity=0.04, seed=get_next_rand_seed(), num_points=367),
+		KEY_APD: generate_sample_data(intensity=0.04, seed=get_next_rand_seed(), num_points=367, offset=20),
 	},
     data_view = {KEY_NOX: [], KEY_APD: []},
+    data_lines = {KEY_NOX: None, KEY_APD: None},
     measurement_value = 0,
     color = UI.Colors.kronstad,
 )
@@ -240,9 +289,10 @@ loc_nordnes = SimpleNamespace(
     coordinates = (350,100),
 	historical_data = {
 		KEY_NOX: generate_sample_data(intensity=0.3, seed=get_next_rand_seed(), num_points=367),
-		KEY_APD: generate_sample_data(intensity=0.015, seed=get_next_rand_seed(), num_points=367),
+		KEY_APD: generate_sample_data(intensity=0.015, seed=get_next_rand_seed(), num_points=367, offset=20),
 	},
     data_view = {KEY_NOX: [], KEY_APD: []},
+    data_lines = {KEY_NOX: None, KEY_APD: None},
     measurement_value = 0,
     color = UI.Colors.nordnes,
 )
@@ -252,9 +302,10 @@ loc_bryggen = SimpleNamespace(
     coordinates = (550,500),
 	historical_data = {
 		KEY_NOX: generate_sample_data(intensity=0.7, seed=get_next_rand_seed(), num_points=367),
-		KEY_APD: generate_sample_data(intensity=0.025, seed=get_next_rand_seed(), num_points=367),
+		KEY_APD: generate_sample_data(intensity=0.025, seed=get_next_rand_seed(), num_points=367, offset=20),
 	},
 	data_view = {KEY_NOX: [], KEY_APD: []},
+    data_lines = {KEY_NOX: None, KEY_APD: None},
     measurement_value = 0,
     color = UI.Colors.bryggen,
 )
@@ -264,11 +315,12 @@ loc_user = SimpleNamespace(
     coordinates = None,
     historical_data = {KEY_NOX: [], KEY_APD: []},
     data_view = {KEY_NOX: [], KEY_APD: []},
+    data_lines = {KEY_NOX: None, KEY_APD: None},
     measurement_value = 0,
     color = UI.Colors.user,
 )
 
 # make locations arrays for enabling iteration over stations
-# fixed* is for stations, all* includes user-selected point
+# fixed* = fixed locations, all* = fixed* + loc_user
 fixed_locations = [loc_nordnes, loc_kronstad, loc_bryggen]
 all_locations = [loc_nordnes, loc_kronstad, loc_bryggen, loc_user]

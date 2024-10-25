@@ -4,7 +4,9 @@ import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib.patches import Rectangle
+import matplotlib.patches as patches
 from matplotlib.colors import LinearSegmentedColormap
+import matplotlib.collections as mc
 import calendar
 
 # import application specific modules
@@ -31,9 +33,9 @@ def plot_location_markers():
 
     # could make/use all_locations but we do it in two steps for clarity
     for loc in fixed_locations:
-        add_marker(axCityMap, loc)
+        add_marker(ax_city_map, loc)
 
-    add_marker(axCityMap, loc_user)
+    add_marker(ax_city_map, loc_user)
 
 
 # Todo: make linspace follow actual days in year
@@ -55,13 +57,13 @@ def plot_labels_and_ticks(axis, num_days):
         return calendar.monthrange(year, month)[1]
 
     start_month = app.date_range.start_date.month
-    days_in_start_month = get_days_in_month(app.current_year, start_month)
-    months_in_interval = get_months_between(app.date_range.start_date, app.date_range.end_date)
-    print("months_interval", months_in_interval)
+    days_in_start_month = get_days_in_month(app.get_current_year(), start_month)
+    #months_in_interval = get_months_between(app.date_range.start_date, app.date_range.end_date)
+    #print("months_interval", months_in_interval)
 
     use_auto_date_locator = False
 
-    if num_days <= days_in_start_month:
+    if num_days <= MAX_DAYS_TO_RENDER_WITH_DAYS_TICKS:
         day_range_values = get_day_range_values(app.date_range.start_date, app.date_range.end_date)
 
         xlabels = list(day_range_values)
@@ -81,15 +83,31 @@ def plot_labels_and_ticks(axis, num_days):
 
 
 # plot data for a location, allowing shadowing parameters
-def plot_data(axis, day_index_list_arg, loc, data):
+def plot_data(axis, day_index_list_arg, loc, data, data_key):
+
+    # for unknown reason, this stopped working, as it allways claims loc.data_lines[data_key] is
+    # not None after a code change. we didnt dvelve into the matter, but this code was much
+    # more performant than the allways creating new lines-method. We believe the reason is our
+    # changed clearing of axis
+    if True:
+        if loc.data_lines[data_key] is not None:
+            print("rendering to existing data_lines", data_key, loc.data_lines[data_key])
+            loc.data_lines[data_key].set_data(day_index_list_arg, data)
+            return loc.data_lines[data_key]
+        else:
+            loc.data_lines[data_key] = axis.plot(day_index_list_arg, data, color = loc.color)[0]
+            return loc.data_lines[data_key]
+
     return axis.plot(day_index_list_arg, data, color = loc.color)[0]
 
 
 def plot_user_selected_location(axis, legend_lines, number_of_days_to_plot, day_index_list, data_key):
     # extract data, plot and draw horisontal average line for user-selected location
     if loc_user.coordinates is not None:
-        # calc data-points for each day
+        # allocate data_view
         loc_user.data_view[data_key] = np.empty(number_of_days_to_plot, dtype=int)
+
+        # iterate over days
         for i in range(0, number_of_days_to_plot):
             # take measurement value
             for loc in fixed_locations:
@@ -99,7 +117,7 @@ def plot_user_selected_location(axis, legend_lines, number_of_days_to_plot, day_
             loc_user.data_view[data_key][i] = get_estimated_value_at_point(fixed_locations, loc_user.coordinates)
 
         # set/update user-point NOX values
-        legend_lines.append( plot_data(axis, day_index_list, loc_user, loc_user.data_view[data_key]) )
+        legend_lines.append( plot_data(axis, day_index_list, loc_user, loc_user.data_view[data_key], data_key) )
 
         # draw horisontal average line
         axis.axhline(np.mean(loc_user.data_view[data_key]), color=UI.Colors.user, linestyle='--', linewidth=1)
@@ -113,7 +131,7 @@ def plot_fixed_locations(axis, legend_lines, number_of_days_to_plot, day_index_l
         loc.data_view[data_key] = extract_data_interval(loc.historical_data[data_key], app.days_interval[0], app.days_interval[0] + number_of_days_to_plot)
 
         # plot data for fixed locations, add to legend
-        legend_lines.append( plot_data(axis, day_index_list, loc, loc.data_view[data_key]) )
+        legend_lines.append( plot_data(axis, day_index_list, loc, loc.data_view[data_key], data_key) )
 
         # draw horisontal average line
         axis.axhline(np.mean(loc.data_view[data_key]), color=loc.color, linestyle='--', linewidth=1)
@@ -125,6 +143,10 @@ def invalidate_grid_samples():
     get_grid_samples.invalidate = True
 
 def get_grid_samples():
+    # force re-calculation of grid samples due to bug
+    # Todo: remove this when bug is fixed
+    get_grid_samples.invalidated = True
+
     if not hasattr(get_grid_samples, "invalidated"):
         get_grid_samples.invalidated = True
 
@@ -139,10 +161,10 @@ def get_grid_samples():
     return get_grid_samples.result
 
 #
-def plot_contour_lines(data_key):
+def plot_contour_lines(axis, data_key):
     # update locations measurement_value
     for loc in fixed_locations:
-        loc.measurement_value = app.data_processing_func(loc.data_view[data_key])
+        loc.measurement_value = app.data_fold_func(loc.data_view[data_key])
 
     # generate grid samples for contour plot
     result = get_grid_samples()
@@ -156,7 +178,7 @@ def plot_contour_lines(data_key):
 
     # Now overlay the contour plot (assuming 'result' is your 2D array for contour)
     #contour = axCityMap.contourf(result, levels=10, cmap='terrain', extent=[0, 2000, 0, 1500], alpha=0.3)
-    contour = axCityMap.contour(result, levels=10, cmap='terrain', extent=[0, 2000, 0, 1500])
+    contour = axis.contour(result, levels=10, cmap='terrain', extent=[0, 2000, 0, 1500])
 
     #contour = axCityMap.contour(X, Y, Z_smooth, levels=20, cmap='terrain', extent=[0, 2000, 0, 1500])
 
@@ -168,7 +190,7 @@ def plot_contour_lines(data_key):
 def plot_heightmap_boxed(axis, data_key):
     # update locations measurement_value
     for loc in fixed_locations:
-        loc.measurement_value = app.data_processing_func(loc.data_view[data_key])
+        loc.measurement_value = app.data_fold_func(loc.data_view[data_key])
 
     # generate grid samples for contour plot
     result = get_grid_samples()
@@ -185,6 +207,10 @@ def plot_heightmap_boxed(axis, data_key):
     result_max = result.max()
     result_range = result_max - result_min
 
+    # storage for rectangles
+    #rectangles = np.empty(app.grid_resolutions[1] * app.grid_resolutions[0], dtype=Rectangle)
+    rectangles = []
+
     # iterate over virtual boxes
     for i in range(app.grid_resolutions[1]):
         for j in range(app.grid_resolutions[0]):
@@ -199,37 +225,43 @@ def plot_heightmap_boxed(axis, data_key):
             # Get the max or min of the corner values (choose either min or max)
             box_value = np.mean(box_corners)  # Change to min(box_corners) if needed
 
+            # normalize the value to fit the colormap range
             norm_value = (box_value - result_min) / result_range
 
             # Get the color from the colormap
             color = cmap(norm_value)
-            if norm_value < 0.5:
-                color = cmap(0.0)
-            else:
-                color = cmap(1.0)
+            if norm_value < MINIMUM_VALUE_FOR_HEIGHTMAP_BOXED:
+                continue
+
+            # get color
+            color = cmap(norm_value)
 
             # Create a rectangle for the box
             rect = Rectangle((j * box_height - 1, i * box_width - 1), box_height - 1, box_width - 1, color=color, alpha=0.3)
 
             # Add the rectangle to the plot
-            axis.add_patch(rect)
+            # axis.add_patch(rect)
+            #rectangles[i * (int(app.grid_resolutions[0])) + j] = rect
+            rectangles.append(rect)
 
+    collection = mc.PatchCollection(rectangles, match_original=True)
+    axis.add_collection(collection)
 
 def plot_map(data_key):
     # clear axis
-    axCityMap.cla()
+    ax_city_map.cla()
 
     # plot map of city
-    axCityMap.set_title("Kart Bergen")
-    axCityMap.axis('off')
-    axCityMap.imshow(city_map_image, extent=[0, 2000, 1500, 0])
+    ax_city_map.set_title("Kart Bergen")
+    ax_city_map.axis('off')
+    ax_city_map.imshow(city_map_image, extent=[0, 2000, 1500, 0])
 
     # fix the axis limits to avoid auto-scaling
-    #axCityMap.set_xlim(0, app.map_dimensions[0])  # Example limits, adjust as needed
-    #axCityMap.set_ylim(app.map_dimensions[1], 0)
+    ax_city_map.set_xlim(0, app.map_dimensions[0])  # Example limits, adjust as needed
+    ax_city_map.set_ylim(app.map_dimensions[1], 0)
 
     # equal scaling on both axes
-    #axCityMap.set_aspect('equal', 'box')
+    ax_city_map.set_aspect('equal', 'box')
 
     # plot map markers for locations and user-selected point
     plot_location_markers()
@@ -240,16 +272,16 @@ def plot_map(data_key):
 
         if app.plot_countour_lines:
             # plot map contour lines
-            plot_contour_lines(data_key)
+            plot_contour_lines(ax_city_map, data_key)
 
         if app.plot_heightmap_boxed:
             # plot heightmap boxed
-            plot_heightmap_boxed(axCityMap, data_key)
+            plot_heightmap_boxed(ax_city_map, data_key)
 
 
 def plot_graphs(axis, data_key):
     # clear axis
-    axis.cla()
+    # axis.cla()
 
     # declare variables
     legend_lines = []
@@ -286,7 +318,7 @@ def plot_app():
     plot_graphs(ax_apd, KEY_APD)
 
     # plot map (change key to plot APD or NOX)
-    plot_map(KEY_NOX)
+    plot_map(app.map_overlay_key)
 
     # draw the plot
     plt.draw()

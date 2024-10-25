@@ -6,17 +6,17 @@ import random
 from random import randint
 
 
-
 # Generate random data for n days
 # centervals are values average values for each month
 # - Fixed error, that caused function to only generate 364 data points
 #   we have rigged it to create 367 data points, one for each day in leap-year
 #   and one data point for the following year
-def generate_sample_data(intensity:float, seed:int=0, num_points:int=367) -> [int]:
+def generate_sample_data(intensity:float, seed:int=0, num_points:int=367, offset:float=0, ) -> [int]:
     """
     :param intensity: Number specifying size, amplitude
     :param seed: If given, same data with seed is generated
     :param num_points: Number of data points to generate
+    :param offset: Offset to add to each data point
     """
     if seed != 0:
         random.seed(seed)
@@ -32,10 +32,9 @@ def generate_sample_data(intensity:float, seed:int=0, num_points:int=367) -> [in
         dx = min(2.0, max(0.5, value / center ))
         value = value + randint(1,5) / dx if inc else value - randint( 1, 5) * dx
         #value = max(10, value)
-        value_arr[index] = value
+        value_arr[index] = value + offset
     return value_arr
 # END GenereateRandomYearDataList
-
 
 
 # extract data from a list
@@ -45,7 +44,6 @@ def extract_data_interval(data, start, end):
     #print(f"extracted data from {start} to {end} length: {len(result)} source-length: {len(data)}")
     return result
 # END extract_data_interval
-
 
 
 # sample triple measurement data as a 2 dimensional grid
@@ -69,7 +67,6 @@ def generate_grid_samples(dim:tuple[int,int], res:tuple[int,int], locations):
 
     return result
 # END generate_grid_samples
-
 
 
 #estimate NOX value based on the N measuring stations
@@ -96,7 +93,9 @@ def get_estimated_value_at_point_ext(locations, pt):
     return np.sum([(weights[i] / total_weight) * locations[i].measurement_value for i in range(len(locations))])
 # END get_estimated_value_at_point
 
-def get_estimated_value_at_point_ext(locations, marked_point, power=4):
+
+# estimate NOX value based on the N measuring stations
+def get_estimated_value_at_point_alt(locations, marked_point, power=4):
     # Initialize variables for total distance and the weighted NOX value
     total_weight = 0
     weighted_value = 0
@@ -119,9 +118,10 @@ def get_estimated_value_at_point_ext(locations, marked_point, power=4):
 
     # Calculate the final NOX value as the weighted average
     return (weighted_value / total_weight) if total_weight != 0 else 0
+# END get_estimated_value_at_point_ext
 
 
-#estimate NOX value based on the two measuring stations
+# estimate NOX value based on the N measuring stations
 def get_estimated_value_at_point(locations, pt, power=1):
     dist_to_point = [math.dist(loc.coordinates, pt) for loc in locations]
 

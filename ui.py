@@ -3,7 +3,7 @@ import matplotlib
 import matplotlib.widgets
 import matplotlib.pyplot as plt
 
-from defs import axInputPane
+from defs import ax_input_pane
 from plot import *
 
 # ---------- Declare text helpers ----------------
@@ -19,12 +19,15 @@ uihelper = UIHelper()
 
 # ---------- Radio input input handling ----------
 
-def set_data_processing_func_from_str(str_func):
+def set_data_fold_func_from_str(str_func):
+	# force re-calculation of grid samples
+	invalidate_grid_samples()
+
 	# update processing func
-	app.set_data_processing_func(str_func)
+	app.set_data_fold_callback(str_func)
 
 	# plot graph
-	plot_app()
+	#app.render()
 
 def set_render_option_from_str(input_str):
 	# update render option
@@ -37,7 +40,7 @@ def set_render_option_from_str(input_str):
 			setattr(app, option, True)
 
 	# plot graph
-	plot_app()
+	app.render()
 
 def set_days_interval_from_str(str_period):
 	# reset user-selected point
@@ -51,15 +54,16 @@ def set_days_interval_from_str(str_period):
 	uihelper.text_input_map['start_date'].set_text(uihelper.text_input_map['start_date'].custom_title + app.date_range.start_date.strftime('%Y-%m-%d'))
 	uihelper.text_input_map['end_date'].set_text(uihelper.text_input_map['end_date'].custom_title + app.date_range.end_date.strftime('%Y-%m-%d'))
 
-	# plot graph
-	plot_app()
-
 def set_map_overlay_from_str(str_id):
 	# update key for map overlay
-	app.map_overlay_key = string_to_map_overlay_map.get(str_id, None)
+	app.map_overlay_key = string_to_map_overlay_map.get(str_id, 'NOX')
+
+	print("new overlay key: ", app.map_overlay_key)
 
 	# plot graph
-	plot_app()
+	app.render()
+
+
 
 # ---------- Radio button groups ----------
 
@@ -78,42 +82,47 @@ def create_radio_button_panel(ax, title, list_options, on_clicked):
 		label_props = {'color': list_colors, 'fontsize' : list_fonts},
 		radio_props={'facecolor': button_face_colors, 'edgecolor': button_edge_colors}
 		)
-	ax.text(0.5, 0.95, title, ha='center', va='top', transform=ax.transAxes, fontweight="bold")
+	ax.text(0.1, 0.95, title, ha='left', va='top', transform=ax.transAxes, fontweight="bold")
+
+	label_bottom = 0.075
+	label_height = 0.125
 
 	# Adjust the position of the radio buttons slightly lower
 	for i, (circle, label) in enumerate(zip(radio_button.circles, radio_button.labels)):
+		y = 0.85 - (label_bottom + i * label_height)
+
 		# Adjust the position of the radio button circle
-		circle.center = (circle.center[0], circle.center[1] - 0.075)
+		circle.center = (circle.center[0], y)
 		circle.set_radius(0.025)
 
 		# Adjust the position of the label
-		label.set_position((label.get_position()[0], label.get_position()[1] - 0.075))
+		label.set_position((label.get_position()[0], y))
 
 	radio_button.on_clicked(on_clicked)
 	return radio_button
 # END create_radio_button_panel
 
+
+
 def create_radio_button_panel_for_interval(cb):
-	ax = plt.axes([0.4, 0.4, 0.1, 0.22], facecolor=UI.RadioGroup.bg_color)
+	ax = plt.axes([0.3, 0.715, 0.1, 0.26], facecolor=UI.RadioGroup.bg_color)
 	radio_button = create_radio_button_panel(ax, "Intervall", list(string_to_date_interval_map.keys()), cb)
 	return radio_button
 
 def create_radio_button_panel_for_processing_func(cb):
-	ax = plt.axes([0.4, 0.2, 0.1, 0.18], facecolor=UI.RadioGroup.bg_color)
-	radio_button = create_radio_button_panel(ax, "Funksjon", list(string_to_data_process_func_map.keys()), cb)
+	ax = plt.axes([0.425, 0.715, 0.1, 0.26], facecolor=UI.RadioGroup.bg_color)
+	radio_button = create_radio_button_panel(ax, "Funksjon", list(string_to_data_fold_func_map.keys()), cb)
 	return radio_button
 
 def create_radio_button_panel_for_render_options(cb):
-	ax = plt.axes([0.4, 0.05, 0.1, 0.12], facecolor=UI.RadioGroup.bg_color)
-	radio_button = create_radio_button_panel(ax, "Grafikk", list(string_to_render_option_map.keys()), cb)
+	ax = plt.axes([0.55, 0.715, 0.1, 0.26], facecolor=UI.RadioGroup.bg_color)
+	radio_button = create_radio_button_panel(ax, "Plot", list(string_to_render_option_map.keys()), cb)
 	return radio_button
 
 def create_radio_button_panel_for_map_overlay_options(cb):
-	ax = plt.axes([0.4, 0.05, 0.1, 0.01], facecolor=UI.RadioGroup.bg_color)
+	ax = plt.axes([0.675, 0.715, 0.1, 0.26], facecolor=UI.RadioGroup.bg_color)
 	radio_button = create_radio_button_panel(ax, "Kartfunksjon", list(string_to_map_overlay_map.keys()), cb)
 	return radio_button
-
-
 
 
 
@@ -134,10 +143,12 @@ def create_date_text_inputs(ax):
 		bbox_data = bbox.transformed(ax.transData.inverted())  # Convert to data coordinates
 		return bbox_data
 
-	# Display initial text
+	ax.text(0.0125, 0.75, "Brukervalgt data intervall", horizontalalignment='left', verticalalignment='center', fontsize=10,fontweight="bold"),
+
+	# create text fields (serves as input with custom key press code
 	text_input_list = [
-		ax.text(0.0125, 0.85, "", horizontalalignment='left', verticalalignment='center', fontsize=12),
-		ax.text(0.0125, 0.85 - AUI.Axis.InputPane.height * 1, "", horizontalalignment='left', verticalalignment='center', fontsize=12)
+		ax.text(0.0125, 0.77 - 0.25, "", horizontalalignment='left', verticalalignment='center', fontsize=10),
+		ax.text(0.0125, 0.77 - 0.25 - 0.18, "", horizontalalignment='left', verticalalignment='center', fontsize=10)
 		]
 
 	text_input_map = {
@@ -166,7 +177,7 @@ def create_date_text_inputs(ax):
 	def update_date_range(start, end):
 		app.set_date_range(start, end)
 
-		plot_app()
+		app.render()
 
 	def on_submit(input_index, text):
 		new_date = datetime.strptime(text, '%Y-%m-%d')
@@ -206,11 +217,21 @@ def create_date_text_inputs(ax):
 
 	return text_input_map
 
-def init_gui():
-	uihelper.text_input_map = create_date_text_inputs(axInputPane)
 
+# ---------- UI initialization ----------
+
+def init_gui():
+	# create text input panel
+	text_input_panel = plt.axes([0.05, 0.715, 0.225, 0.26], facecolor=UI.RadioGroup.bg_color)
+	text_input_panel.set_zorder(-1)
+	hide_axis_graphics(text_input_panel, True, False)
+
+	# create text inputs
+	uihelper.text_input_map = create_date_text_inputs(ax_input_pane)
+
+	# create radio buttons / checkboxes
 	uihelper.radio_buttons = [
-		create_radio_button_panel_for_processing_func(set_data_processing_func_from_str),
+		create_radio_button_panel_for_processing_func(set_data_fold_func_from_str),
 		create_radio_button_panel_for_interval(set_days_interval_from_str),
 		create_radio_button_panel_for_render_options(set_render_option_from_str),
 		create_radio_button_panel_for_map_overlay_options(set_map_overlay_from_str)
