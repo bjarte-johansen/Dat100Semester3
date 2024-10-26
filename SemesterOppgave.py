@@ -98,8 +98,7 @@ from matplotlib.widgets import RadioButtons
 from defs import *
 from plot import plot_app
 from ui import init_gui, uihelper
-from locations import loc_user, all_locations
-
+from locations import loc_user, all_locations, loc_nordnes
 
 
 # ---------- Event handlers ----------

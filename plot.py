@@ -1,13 +1,11 @@
 import pandas as pd
-
 import matplotlib.patches as mpatches
-
 import matplotlib.dates as mdates
-from matplotlib.patches import Rectangle
-
-from matplotlib.colors import LinearSegmentedColormap
-import matplotlib.collections as mc
-
+#from fontTools.designspaceLib.types import clamp
+#from matplotlib.patches import Rectangle
+#from matplotlib.colors import LinearSegmentedColormap
+#import matplotlib.collections as mc
+from ui import uihelper
 
 # import application specific modules
 from defs import *
@@ -170,8 +168,25 @@ def plot_graphs(axis, data_key):
 
     # set graph title, legend, grid and autoscale etc
     axis.set_title(data_key + " verdier")
-    axis.legend(legend_lines, [loc.name for loc in all_locations])
+
+    # set legend
+    legend_titles = [loc.name for loc in all_locations]
+    axis.legend(legend_lines, legend_titles)
+
     axis.grid(linestyle='dashed')
+
+
+def plot_pollution_display():
+    keys = [KEY_NOX, KEY_APD]
+    for key in keys:
+        # calculate pollution percentage
+        ratio = np.mean(loc_nordnes.data_view[key]) / np.mean(loc_kronstad.data_view[key])
+        val = ratio * 100
+        val = f"{val:.2f}%"
+
+        # set text input values
+        key = key.lower() + "_pollution_percentage"
+        uihelper.text_input_map[key].set_text( val )
 
 
 def plot_app():
@@ -183,6 +198,9 @@ def plot_app():
 
     # plot map (change key to plot APD or NOX)
     plot_city_map(app.map_overlay_key)
+
+    # plot pollution display
+    plot_pollution_display()
 
     # draw the plot
     plt.draw()

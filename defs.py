@@ -111,6 +111,7 @@ class Application:
 
         self.days_interval = self.date_range.to_days_interval()
 
+        # invalidate graphs
         self.invalidate_graph_axis()
 
         # render app

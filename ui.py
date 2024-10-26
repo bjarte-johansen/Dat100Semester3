@@ -288,12 +288,26 @@ def init_gui():
 	hide_axis_graphics(text_input_panel, hide_ticks=True, hide_spines=False)
 	text_input_panel.set_zorder(-1)
 
+
 	# create text inputs
 	uihelper.text_input_map = create_date_text_inputs(ax_input_pane)
 
 	# update date range for text inputs from app
 	uihelper.text_input_map['start_date'].set_text("Dato start: " + app.date_range.start_date.strftime('%Y-%m-%d'))
 	uihelper.text_input_map['end_date'].set_text("Dato slutt: " + app.date_range.end_date.strftime('%Y-%m-%d'))
+
+
+	# create average pollution text
+	text1 = ax_input_pane.text(0.0125, 0.1, "Snitt forurensing nordnes:kronstad", horizontalalignment='left', verticalalignment='center', fontsize=10)
+
+	text2a = ax_input_pane.text(0.0125, 0.05 - 0.1, "NOX:", horizontalalignment='left', verticalalignment='center', fontsize=10)
+	text2b = ax_input_pane.text(0.048, 0.05 - 0.1, "-%", horizontalalignment='left', verticalalignment='center', fontsize=10)
+
+	text3a = ax_input_pane.text(0.1, 0.05 - 0.1, "APD:", horizontalalignment='left', verticalalignment='center', fontsize=10)
+	text3b = ax_input_pane.text(0.12875, 0.05 - 0.1, "-%", horizontalalignment='left', verticalalignment='center', fontsize=10)
+
+	uihelper.text_input_map['nox_pollution_percentage'] = text2b
+	uihelper.text_input_map['apd_pollution_percentage'] = text3b
 
 
 	# create radio buttons / checkboxes
