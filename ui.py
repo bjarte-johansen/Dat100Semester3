@@ -92,9 +92,6 @@ def set_render_option_from_str(str_id):
 
 
 def set_date_range_from_interval_from_key_str(str_id):
-	# reset user-selected point
-	#app.user_location.coordinates = None
-
 	app.begin_update()
 
 	# invalidate graph axis
@@ -191,12 +188,11 @@ def create_radio_button_panel_for_value_estimation_func(cb):
 
 # ---------- Date input text handling ----------
 
-def validate_date_input(date_str):
+def str_to_datetime(date_str):
 	try:
-		datetime.strptime(date_str, '%Y-%m-%d')
-		return True
+		return datetime.strptime(date_str, '%Y-%m-%d')
 	except ValueError:
-		return False
+		return None
 
 def create_date_text_inputs(ax):
 	# returns the bounding box of a text object in data coordinates
@@ -241,7 +237,11 @@ def create_date_text_inputs(ax):
 
 	def on_submit(input_index, text):
 		# convert text to date
-		new_date = datetime.strptime(text, '%Y-%m-%d')
+		new_date = str_to_datetime(datetime.strptime(text, '%Y-%m-%d'))
+
+		if new_date is None:
+			print("Ugyldig dato")
+			return
 
 		# update application date range
 		if input_index == 0:

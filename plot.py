@@ -49,7 +49,7 @@ def plot_data(axis, day_index_list_arg, loc, data, data_key):
         return loc.data_lines[data_key]
 
 
-def plot_user_selected_location(axis, legend_lines, number_of_days_to_plot, day_index_list, data_key):
+def plot_user_selected_location_graphs(axis, legend_lines, number_of_days_to_plot, day_index_list, data_key):
     # assign to a shorter variable name
     loc_user = app.user_location
 
@@ -75,7 +75,7 @@ def plot_user_selected_location(axis, legend_lines, number_of_days_to_plot, day_
 # END plot_user_selected_location
 
 
-def plot_fixed_locations(axis, legend_lines, number_of_days_to_plot, day_index_list, data_key):
+def plot_fixed_locations_graphs(axis, legend_lines, number_of_days_to_plot, day_index_list, data_key):
     # extract data, plot and draw horisontal average line for fixed locations
     for loc in fixed_locations:
         # extract into data-view
@@ -108,19 +108,18 @@ def plot_city_map(data_key):
     # plot map markers for locations and user-selected point
     plot_location_markers()
 
-    # rendering methods that require grid samples
-    if app.plot_grid_countour_lines or app.plot_grid_threshold_heatmap or app.plot_grid_heatmap:
-        if app.plot_grid_countour_lines:
-            # plot map contour lines
-            plot_grid_contour_lines(ax_city_map, data_key)
+    # 2d plot methods
+    if app.plot_grid_countour_lines:
+        # plot map contour lines
+        plot_grid_contour_lines(ax_city_map, data_key)
 
-        if app.plot_grid_threshold_heatmap:
-            # plot heatmap thresholded
-            plot_grid_threshold_heatmap(ax_city_map, data_key)
+    if app.plot_grid_threshold_heatmap:
+        # plot heatmap thresholded
+        plot_grid_threshold_heatmap(ax_city_map, data_key)
 
-        if app.plot_grid_heatmap:
-            # plot heatmap boxed
-            plot_grid_heatmap(ax_city_map, data_key)
+    if app.plot_grid_heatmap:
+        # plot heatmap boxed
+        plot_grid_heatmap(ax_city_map, data_key)
 
 
 def plot_graphs(axis, data_key):
@@ -161,10 +160,10 @@ def plot_graphs(axis, data_key):
     day_index_list = np.arange(0, number_of_days_to_plot)
 
     # plot graph for fixed locations
-    plot_fixed_locations(axis, legend_lines, number_of_days_to_plot, day_index_list, data_key)
+    plot_fixed_locations_graphs(axis, legend_lines, number_of_days_to_plot, day_index_list, data_key)
 
     # plot graph user-selected location
-    plot_user_selected_location(axis, legend_lines, number_of_days_to_plot, day_index_list, data_key)
+    plot_user_selected_location_graphs(axis, legend_lines, number_of_days_to_plot, day_index_list, data_key)
 
     # plot graph labels and ticks
     plot_labels_and_ticks(axis, number_of_days_to_plot - 1)

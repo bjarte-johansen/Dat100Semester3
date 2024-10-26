@@ -148,6 +148,7 @@ init_gui()
 # noinspection PyTypeChecker
 plt.connect('button_press_event', on_click)
 
+
 # plot and go
 app.render()
 

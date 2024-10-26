@@ -47,11 +47,13 @@ locale.setlocale(locale.LC_ALL, 'nb_NO.UTF-8')
 
 class Application:
     def __init__(self):
-        #self.current_year = datetime.now().year         # year
-        self.data_fold_func = np.mean             # reduce array -> value (for get_estimated_value_at_point)
-        self.grid_resolution = (20 * 2, 15 * 2)        # resolution of grid for contour/heightmap etc
+        #self.current_year = datetime.now().year       # year
+        self.data_fold_func = np.mean                  # reduce array -> value (for get_estimated_value_at_point)
+        self.get_estimated_value_at_point_func = get_estimated_value_at_point   # function to estimate value at point
+
+        self.grid_resolution = (20 * 2, 15 * 2)        # resolution of grid for contour/heatmap etc
         self.map_dimension = (2000, 1500)              # dimensions of map
-        self.date_range = DateRange(None, None)         # date range
+        self.date_range = DateRange(None, None)        # date range
         self.days_interval = (0, 0)
 
         self.plot_grid_countour_lines = False
@@ -64,8 +66,6 @@ class Application:
         self.update_count = 0                           # flag for update mode, no renders are done if > 0
         self.user_location = None                       # reference to user location
         self.invalidate_graphs_callback = None          # callback for invalidating graphs
-
-        self.get_estimated_value_at_point_func = get_estimated_value_at_point
 
         tmp = string_to_date_interval_map['År']
         self.set_date_range(tmp['start_date'], tmp['end_date'])
