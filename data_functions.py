@@ -1,7 +1,5 @@
 import numpy as np
-
 import math
-
 import random
 from random import randint
 
@@ -51,7 +49,7 @@ def extract_data_interval(data, start, end):
 # - res: resolution of grid
 # - locations have coordinates and measurement values
 # - preprocess_func: bake array into value [int] -> int
-def generate_grid_samples(dim:tuple[int,int], res:tuple[int,int], locations):
+def generate_grid_samples(dim:tuple[int,int], res:tuple[int,int], locations, sample_func):
     # calculate scale factor
     x_scale = dim[0] / res[0]
     y_scale = dim[1] / res[1]
@@ -63,7 +61,7 @@ def generate_grid_samples(dim:tuple[int,int], res:tuple[int,int], locations):
     for iy in range(res[1]):
         for ix in range(res[0]):
             pt = [ix * x_scale, iy * y_scale]
-            result[iy][ix] = get_estimated_value_at_point(locations, pt)
+            result[iy][ix] = sample_func(locations, pt)
 
     return result
 # END generate_grid_samples
@@ -72,30 +70,9 @@ def generate_grid_samples(dim:tuple[int,int], res:tuple[int,int], locations):
 #estimate NOX value based on the N measuring stations
 # - locations: list of locations containing attributes [coordinates:tuple[int,int], measurement_value:int]
 # - pt: point to estimate NOX value at
-# Todo: we could combine distances and weights calculation since distances are only
-#       used to calculate weight, but we keep it for now
-# Todo: we could also use a more advanced weighting function, that mimics the original
-# Todo: fix, our methods weighing and normalization is not correct
-def get_estimated_value_at_point_ext(locations, pt):
-    # define powerfactor so that small values mean more than big values in division
-    power_factor = 2
-
-    # distance to point from locations, add small value to avoid division by zero
-    distances = [(math.dist(loc.coordinates, pt) + 1E-03) for loc in locations]
-
-    # inverse distance weights with a power factor to emphasize closer points (chatgpt)
-    weights = [1 / (dist ** power_factor) for dist in distances]
-
-    # total weight is the sum of individual weights
-    total_weight = np.sum(weights)
-
-    # weighted value is the sum of each value multiplied by its corresponding weight (chatgpt)
-    return np.sum([(weights[i] / total_weight) * locations[i].measurement_value for i in range(len(locations))])
-# END get_estimated_value_at_point
-
 
 # estimate NOX value based on the N measuring stations
-def get_estimated_value_at_point_alt(locations, marked_point, power=4):
+def get_estimated_value_at_point_ext(locations, marked_point, power=1):
     # Initialize variables for total distance and the weighted NOX value
     total_weight = 0
     weighted_value = 0

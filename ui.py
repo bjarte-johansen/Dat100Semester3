@@ -2,9 +2,37 @@ import defs
 import matplotlib
 import matplotlib.widgets
 import matplotlib.pyplot as plt
+from matplotlib.widgets import RadioButtons
 
-from defs import ax_input_pane
-from plot import *
+from defs import ax_input_pane, fig, app
+#from plot import *
+
+from utils import EmptyClass, hide_axis_graphics
+from constants import *
+from data_functions import get_estimated_value_at_point
+
+
+# ---------- configure UI colors/fonts ----------
+
+class UI:
+	marker_size:int = 60					# size of "disc" around marker
+	marker_stroke_size:int = 3			  	# width of stroke around marker
+	marker_face_alpha = "77"				# hex, alphavalue of "disc" around marker
+	marker_edge_alpha = "AA"				# hex, alphavalue of "disc" around marker
+	marker_dot_radius:int = 4			   	# radius of "dot" in marker
+	marker_dot_color = "#000000"			# color of "dot" in marker
+	contour_levels = 5					 	# number of contour levels
+
+	class RadioGroup:
+		bg_color = '#FFFFFFCC'			  	# background color of radio button group
+
+	class Colors:
+		kronstad:str = "#c02f1e"			# color of kronstad
+		nordnes:str = "#1A6390"			 	# color of nordnes
+		bryggen: str = "#6a994e"			# color of bryggen
+		user:str = "#C453FF"				# color of user-selected point
+
+
 
 # ---------- Declare text helpers ----------------
 
@@ -17,48 +45,78 @@ class UIHelper:
 uihelper = UIHelper()
 
 
-# ---------- Radio input input handling ----------
+# ---------- input event handlers ----------
 
-def set_data_fold_func_from_str(str_func):
-	# force re-calculation of grid samples
-	invalidate_grid_samples()
-
+def set_value_estimation_func_from_str(str_id):
 	# update processing func
-	app.set_data_fold_callback(str_func)
+	fn = string_to_estimate_func_map.get(str_id, get_estimated_value_at_point)
+	app.get_estimated_value_at_point_func = fn
 
-	# plot graph
-	#app.render()
+	print(app.get_estimated_value_at_point_func)
 
-def set_render_option_from_str(input_str):
-	# update render option
-	app.plot_countour_lines = False
-	app.plot_heightmap_boxed = False
+	# invalidate graph axis
+	app.invalidate_graph_axis()
 
-	option = string_to_render_option_map.get(input_str, None)
-	if option is not None:
-		if hasattr(app, option):
-			setattr(app, option, True)
-
-	# plot graph
+	# render
 	app.render()
 
-def set_days_interval_from_str(str_period):
+def set_data_fold_func_from_str(str_id):
+	# update processing func
+	app.set_data_fold_callback(str_id)
+
+	# invalidate graph axis
+	app.invalidate_graph_axis()
+
+	# render
+	app.render()
+
+
+def set_render_option_from_str(str_id):
+	# clear plot options
+	app.plot_grid_countour_lines = False
+	app.plot_grid_threshold_heatmap = False
+	app.plot_grid_heatmap = False
+
+	# update render option
+	option = string_to_render_option_map.get(str_id, None)
+	if option is not None:
+		if hasattr(app, option):
+			prev = getattr(app, option)
+			setattr(app, option, not prev)
+
+	# invalidate graph axis
+	app.invalidate_graph_axis()
+
+	# render
+	app.render()
+
+
+def set_date_range_from_interval_from_key_str(str_id):
 	# reset user-selected point
-	loc_user.coordinates = None
+	#app.user_location.coordinates = None
+
+	app.begin_update()
+
+	# invalidate graph axis
+	app.invalidate_graph_axis()
 
 	# update app date range
-	tmp = string_to_date_interval_map[str_period]
+	tmp = string_to_date_interval_map[str_id]
 	app.set_date_range(tmp['start_date'], tmp['end_date'])
 
 	# update text inputs
 	uihelper.text_input_map['start_date'].set_text(uihelper.text_input_map['start_date'].custom_title + app.date_range.start_date.strftime('%Y-%m-%d'))
 	uihelper.text_input_map['end_date'].set_text(uihelper.text_input_map['end_date'].custom_title + app.date_range.end_date.strftime('%Y-%m-%d'))
 
-def set_map_overlay_from_str(str_id):
+	app.end_update()
+
+
+def set_map_overlay_key_from_str(str_id):
 	# update key for map overlay
 	app.map_overlay_key = string_to_map_overlay_map.get(str_id, 'NOX')
 
-	print("new overlay key: ", app.map_overlay_key)
+	# invalidate graph axis
+	app.invalidate_graph_axis()
 
 	# plot graph
 	app.render()
@@ -111,7 +169,7 @@ def create_radio_button_panel_for_interval(cb):
 
 def create_radio_button_panel_for_processing_func(cb):
 	ax = plt.axes([0.425, 0.715, 0.1, 0.26], facecolor=UI.RadioGroup.bg_color)
-	radio_button = create_radio_button_panel(ax, "Funksjon", list(string_to_data_fold_func_map.keys()), cb)
+	radio_button = create_radio_button_panel(ax, "Reduksjon", list(string_to_data_fold_func_map.keys()), cb)
 	return radio_button
 
 def create_radio_button_panel_for_render_options(cb):
@@ -122,6 +180,11 @@ def create_radio_button_panel_for_render_options(cb):
 def create_radio_button_panel_for_map_overlay_options(cb):
 	ax = plt.axes([0.675, 0.715, 0.1, 0.26], facecolor=UI.RadioGroup.bg_color)
 	radio_button = create_radio_button_panel(ax, "Kartfunksjon", list(string_to_map_overlay_map.keys()), cb)
+	return radio_button
+
+def create_radio_button_panel_for_value_estimation_func(cb):
+	ax = plt.axes([0.8, 0.715, 0.1, 0.26], facecolor=UI.RadioGroup.bg_color)
+	radio_button = create_radio_button_panel(ax, "Estimering", list(string_to_estimate_func_map.keys()), cb)
 	return radio_button
 
 
@@ -143,12 +206,12 @@ def create_date_text_inputs(ax):
 		bbox_data = bbox.transformed(ax.transData.inverted())  # Convert to data coordinates
 		return bbox_data
 
-	ax.text(0.0125, 0.75, "Brukervalgt data intervall", horizontalalignment='left', verticalalignment='center', fontsize=10,fontweight="bold"),
+	ax.text(0.0125, 0.8, "Brukervalgt data intervall", horizontalalignment='left', verticalalignment='center', fontsize=10,fontweight="bold"),
 
 	# create text fields (serves as input with custom key press code
 	text_input_list = [
-		ax.text(0.0125, 0.77 - 0.25, "", horizontalalignment='left', verticalalignment='center', fontsize=10),
-		ax.text(0.0125, 0.77 - 0.25 - 0.18, "", horizontalalignment='left', verticalalignment='center', fontsize=10)
+		ax.text(0.0125, 0.89 - 0.28, "", horizontalalignment='left', verticalalignment='center', fontsize=10),
+		ax.text(0.0125, 0.89 - 0.28 - 0.17, "", horizontalalignment='left', verticalalignment='center', fontsize=10)
 		]
 
 	text_input_map = {
@@ -158,6 +221,8 @@ def create_date_text_inputs(ax):
 	text_input_map['start_date'].custom_title = 'Dato start: '
 	text_input_map['end_date'].custom_title = 'Dato slutt: '
 
+	# use class for index so we can have it carried into local functions
+	# since we cannot use global keyword, dont spam global space
 	active_text_input = EmptyClass()
 	active_text_input.index = -1
 
@@ -175,8 +240,10 @@ def create_date_text_inputs(ax):
 				print("log: clicked on text input ", active_text_input.index)
 
 	def on_submit(input_index, text):
+		# convert text to date
 		new_date = datetime.strptime(text, '%Y-%m-%d')
 
+		# update application date range
 		if input_index == 0:
 			app.set_date_range(new_date, app.date_range.end_date)
 		elif input_index == 1:
@@ -218,16 +285,22 @@ def create_date_text_inputs(ax):
 def init_gui():
 	# create text input panel
 	text_input_panel = plt.axes([0.05, 0.715, 0.225, 0.26], facecolor=UI.RadioGroup.bg_color)
+	hide_axis_graphics(text_input_panel, hide_ticks=True, hide_spines=False)
 	text_input_panel.set_zorder(-1)
-	hide_axis_graphics(text_input_panel, True, False)
 
 	# create text inputs
 	uihelper.text_input_map = create_date_text_inputs(ax_input_pane)
 
+	# update date range for text inputs from app
+	uihelper.text_input_map['start_date'].set_text("Dato start: " + app.date_range.start_date.strftime('%Y-%m-%d'))
+	uihelper.text_input_map['end_date'].set_text("Dato slutt: " + app.date_range.end_date.strftime('%Y-%m-%d'))
+
+
 	# create radio buttons / checkboxes
 	uihelper.radio_buttons = [
 		create_radio_button_panel_for_processing_func(set_data_fold_func_from_str),
-		create_radio_button_panel_for_interval(set_days_interval_from_str),
+		create_radio_button_panel_for_interval(set_date_range_from_interval_from_key_str),
 		create_radio_button_panel_for_render_options(set_render_option_from_str),
-		create_radio_button_panel_for_map_overlay_options(set_map_overlay_from_str)
+		create_radio_button_panel_for_map_overlay_options(set_map_overlay_key_from_str),
+		create_radio_button_panel_for_value_estimation_func(set_value_estimation_func_from_str)
 	]
