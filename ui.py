@@ -312,9 +312,9 @@ def init_gui():
 
 	# create radio buttons / checkboxes
 	uihelper.radio_buttons = [
-		create_radio_button_panel_for_fold_func(set_data_fold_func_from_str),
 		create_radio_button_panel_for_interval(set_date_range_from_interval_from_key_str),
 		create_radio_button_panel_for_plot_options(set_render_option_from_str),
+		create_radio_button_panel_for_fold_func(set_data_fold_func_from_str),
 		create_radio_button_panel_for_map_overlay_options(set_map_overlay_key_from_str),
 		create_radio_button_panel_for_value_estimation_func(set_value_estimation_func_from_str)
 	]

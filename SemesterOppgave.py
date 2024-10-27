@@ -143,7 +143,9 @@ def on_click(event) :
 
 #---------- UI construction / helpers ----------
 
-# configure application
+# create & configure application object
+
+
 app.user_location = loc_user
 app.plot_gui_callback = plot_app
 app.invalidate_graphs_callback = invalidate_graphs

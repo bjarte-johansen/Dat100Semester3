@@ -149,7 +149,7 @@ class Application:
         # call render callback
         if self.plot_gui_callback is not None:
             self.plot_gui_callback()
-
 # END Application
 
+# create application instance
 app = Application()
