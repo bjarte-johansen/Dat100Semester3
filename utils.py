@@ -3,6 +3,14 @@ class EmptyClass:
     pass
 
 
+# log function
+def clog(*args):
+    print("LOG", *args)
+
+# get function name from function reference
+def get_function_name(fn):
+    return fn.__name__ if fn is not None else "None"
+
 # get a successive random seeds starting at 1
 def get_next_rand_seed():
     if not hasattr(get_next_rand_seed, "counter"):

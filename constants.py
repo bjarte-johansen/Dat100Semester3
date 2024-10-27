@@ -17,6 +17,11 @@ MINIMUM_VALUE_FOR_HEIGHTMAP_BOXED = 0.5         # threshold for heightmap boxed 
 KEY_NOX = 'NOX'
 KEY_APD = 'APD'
 
+AXIS_NONE = 0
+AXIS_ALL = 1
+AXIS_GRAPH = 2
+AXIS_MAP = 3
+
 
 
 # ---------- define maps, used by radio button / checkbox groups ----------

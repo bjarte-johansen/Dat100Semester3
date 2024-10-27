@@ -7,7 +7,7 @@ from matplotlib.widgets import RadioButtons
 from defs import ax_input_pane, fig, app
 #from plot import *
 
-from utils import EmptyClass, hide_axis_graphics
+from utils import EmptyClass, hide_axis_graphics, clog
 from constants import *
 from data_functions import get_estimated_value_at_point
 
@@ -49,10 +49,11 @@ uihelper = UIHelper()
 
 def set_value_estimation_func_from_str(str_id):
 	# update processing func
-	fn = string_to_estimate_func_map.get(str_id, get_estimated_value_at_point)
-	app.get_estimated_value_at_point_func = fn
-
-	print(app.get_estimated_value_at_point_func)
+	fn = string_to_estimate_func_map.get(
+		str_id,
+		get_estimated_value_at_point
+		)
+	app.set_data_estimation_callback(fn)
 
 	# invalidate graph axis
 	app.invalidate_graph_axis()
@@ -61,8 +62,12 @@ def set_value_estimation_func_from_str(str_id):
 	app.render()
 
 def set_data_fold_func_from_str(str_id):
-	# update processing func
-	app.set_data_fold_callback(str_id)
+	# attempt to get default value from map
+	default_data_reduction_func = string_to_data_fold_func_map.get('default', np.mean)
+
+	# get function from map
+	fn = string_to_data_fold_func_map.get(str_id, default_data_reduction_func)
+	app.set_data_fold_callback(fn)
 
 	# invalidate graph axis
 	app.invalidate_graph_axis()
@@ -72,17 +77,9 @@ def set_data_fold_func_from_str(str_id):
 
 
 def set_render_option_from_str(str_id):
-	# clear plot options
-	app.plot_grid_countour_lines = False
-	app.plot_grid_threshold_heatmap = False
-	app.plot_grid_heatmap = False
-
-	# update render option
+	# update plot type
 	option = string_to_render_option_map.get(str_id, None)
-	if option is not None:
-		if hasattr(app, option):
-			prev = getattr(app, option)
-			setattr(app, option, not prev)
+	app.set_plot_type(option, True)
 
 	# invalidate graph axis
 	app.invalidate_graph_axis()
@@ -111,6 +108,8 @@ def set_date_range_from_interval_from_key_str(str_id):
 def set_map_overlay_key_from_str(str_id):
 	# update key for map overlay
 	app.map_overlay_key = string_to_map_overlay_map.get(str_id, 'NOX')
+
+	clog("set map_overlay_key", app.map_overlay_key)
 
 	# invalidate graph axis
 	app.invalidate_graph_axis()
@@ -164,14 +163,14 @@ def create_radio_button_panel_for_interval(cb):
 	radio_button = create_radio_button_panel(ax, "Intervall", list(string_to_date_interval_map.keys()), cb)
 	return radio_button
 
-def create_radio_button_panel_for_processing_func(cb):
+def create_radio_button_panel_for_plot_options(cb):
 	ax = plt.axes([0.425, 0.715, 0.1, 0.26], facecolor=UI.RadioGroup.bg_color)
-	radio_button = create_radio_button_panel(ax, "Reduksjon", list(string_to_data_fold_func_map.keys()), cb)
+	radio_button = create_radio_button_panel(ax, "Plot", list(string_to_render_option_map.keys()), cb)
 	return radio_button
 
-def create_radio_button_panel_for_render_options(cb):
+def create_radio_button_panel_for_fold_func(cb):
 	ax = plt.axes([0.55, 0.715, 0.1, 0.26], facecolor=UI.RadioGroup.bg_color)
-	radio_button = create_radio_button_panel(ax, "Plot", list(string_to_render_option_map.keys()), cb)
+	radio_button = create_radio_button_panel(ax, "Reduksjon", list(string_to_data_fold_func_map.keys()), cb)
 	return radio_button
 
 def create_radio_button_panel_for_map_overlay_options(cb):
@@ -313,9 +312,9 @@ def init_gui():
 
 	# create radio buttons / checkboxes
 	uihelper.radio_buttons = [
-		create_radio_button_panel_for_processing_func(set_data_fold_func_from_str),
+		create_radio_button_panel_for_fold_func(set_data_fold_func_from_str),
 		create_radio_button_panel_for_interval(set_date_range_from_interval_from_key_str),
-		create_radio_button_panel_for_render_options(set_render_option_from_str),
+		create_radio_button_panel_for_plot_options(set_render_option_from_str),
 		create_radio_button_panel_for_map_overlay_options(set_map_overlay_key_from_str),
 		create_radio_button_panel_for_value_estimation_func(set_value_estimation_func_from_str)
 	]

@@ -4,7 +4,8 @@ import matplotlib.image as mpimg
 
 # import constants
 from constants import *
-from utils import hide_axis_graphics
+from utils import hide_axis_graphics, clog, get_function_name
+
 
 
 
@@ -98,7 +99,7 @@ class Application:
 
     # self-explanatory
     def set_date_range(self, start_date:datetime, end_date:datetime):
-        print(f"set_date_range called, start: {start_date}, end: {end_date}")
+        clog(f"set_date_range", start_date, end_date)
         #raise NotImplementedError("set_date_range not implemented")
 
         # validate input
@@ -117,12 +118,27 @@ class Application:
         # render app
         self.render()
 
+    # set estimation function
+    def set_data_estimation_callback(self, fn):
+        self.get_estimated_value_at_point_func = fn
 
-    # update function for reduce array -> value, default to np.mean
-    def set_data_fold_callback(self, str_func_name):
-        default_data_reduction_func = string_to_data_fold_func_map.get('default', np.mean)
-        self.data_fold_func = string_to_data_fold_func_map.get(str_func_name, default_data_reduction_func)
+        clog("set estimation func", get_function_name(fn))
 
+    # set function for reduce array -> value
+    def set_data_fold_callback(self, fn):
+        self.data_fold_func = fn
+
+        clog("set fold func", get_function_name(fn))
+
+    def set_plot_type(self, attr_name:str, value:bool):
+        self.plot_grid_countour_lines = False
+        self.plot_grid_threshold_heatmap = False
+        self.plot_grid_heatmap = False
+
+        # set plot type
+        setattr(self, attr_name, value)
+
+        clog("set plot type", attr_name, value)
 
     # render app
     def render(self):

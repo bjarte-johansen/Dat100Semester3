@@ -99,6 +99,7 @@ from defs import *
 from plot import plot_app
 from ui import init_gui, uihelper
 from locations import loc_user, all_locations, loc_nordnes
+from constants import AXIS_GRAPH, AXIS_MAP, AXIS_ALL
 
 
 # ---------- Event handlers ----------
@@ -107,12 +108,20 @@ def invalidate_locations_data_lines():
     for loc in all_locations:
         for data_key in loc.data_lines:
             loc.data_lines[data_key] = None
-    print("line2d objects invalidated")
 
-def invalidate_graphs():
+def invalidate_graphs(keys:[int]=None):
     # invalidate axis
-    ax_nox.clear()
-    ax_apd.clear()
+    if keys is None:
+        # clear all
+        ax_nox.clear()
+        ax_apd.clear()
+    else:
+        # clear specific
+        if AXIS_GRAPH in keys:
+            ax_nox.clear()
+            ax_apd.clear()
+        if AXIS_MAP in keys:
+            ax_city_map.clear()
 
     # invalidate line2d objects
     invalidate_locations_data_lines()
@@ -121,8 +130,6 @@ def invalidate_graphs():
 def on_click(event) :
     if ax := event.inaxes:
         if ax == ax_city_map:
-            print("clicked")
-
             # update location
             app.user_location.coordinates = (event.xdata, event.ydata)
 
@@ -146,7 +153,6 @@ init_gui()
 
 # noinspection PyTypeChecker
 plt.connect('button_press_event', on_click)
-
 
 # plot and go
 app.render()
