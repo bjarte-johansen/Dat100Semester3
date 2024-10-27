@@ -188,6 +188,7 @@ def create_radio_button_panel_for_value_estimation_func(cb):
 
 # ---------- Date input text handling ----------
 
+# str to datetime, returns None if invalid
 def str_to_datetime(date_str):
 	try:
 		return datetime.strptime(date_str, '%Y-%m-%d')
@@ -237,7 +238,7 @@ def create_date_text_inputs(ax):
 
 	def on_submit(input_index, text):
 		# convert text to date
-		new_date = str_to_datetime(datetime.strptime(text, '%Y-%m-%d'))
+		new_date = str_to_datetime(text)
 
 		if new_date is None:
 			print("Ugyldig dato")
