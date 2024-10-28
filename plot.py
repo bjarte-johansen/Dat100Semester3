@@ -1,16 +1,7 @@
-import pandas as pd
 import matplotlib.patches as mpatches
-import matplotlib.dates as mdates
-#from fontTools.designspaceLib.types import clamp
-#from matplotlib.patches import Rectangle
-#from matplotlib.colors import LinearSegmentedColormap
-#import matplotlib.collections as mc
 from ui import uihelper
-import time
 
 # import application specific modules
-from defs import *
-from locations import *
 from plot_grid import *
 from plot_graphs import plot_graphs
 from utils import clog
