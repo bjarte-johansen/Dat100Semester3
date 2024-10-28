@@ -121,9 +121,10 @@ def plot_app():
 
     time_plot_app = time.time() - time_plot_app
 
-    clog(f"NOX Graph display time: {time_plot_nox_graphs} seconds")
-    clog(f"APD Graph display time: {time_plot_apd_graphs} seconds")
-    clog(f"Map display time: {time_plot_map} seconds")
-    clog(f"Pollution display time: {time_pollution_display} seconds")
-    clog(f"Plot draw time: {time_plot_app} seconds")
+    if True:
+        clog(f"NOX Graph display time: {time_plot_nox_graphs} seconds")
+        clog(f"APD Graph display time: {time_plot_apd_graphs} seconds")
+        clog(f"Map display time: {time_plot_map} seconds")
+        clog(f"Pollution display time: {time_pollution_display} seconds")
+        clog(f"Plot draw time: {time_plot_app} seconds")
 # END plot_app
