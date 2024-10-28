@@ -91,40 +91,21 @@ def plot_pollution_display():
 def plot_app():
     clog("plot_app")
 
-    time_plot_app = time.time()
-
     # plot NOX graphs
-    time_plot_nox_graphs = time.time()
     plot_graphs(ax_nox, KEY_NOX)
-    time_plot_nox_graphs = time.time() - time_plot_nox_graphs
 
     # plot NOX graphs
-    time_plot_apd_graphs = time.time()
     plot_graphs(ax_apd, KEY_APD)
-    time_plot_apd_graphs = time.time() - time_plot_apd_graphs
 
     # plot map (change key to plot APD or NOX)
-    time_plot_map = time.time()
     plot_city_map(app.map_overlay_key)
-    time_plot_map = time.time() - time_plot_map
 
     # plot pollution display
-    time_pollution_display = time.time()
     plot_pollution_display()
-    time_pollution_display = time.time() - time_pollution_display
 
     # draw the plot
     plt.draw()
 
     # show plot
     plt.show()
-
-    time_plot_app = time.time() - time_plot_app
-
-    if True:
-        clog(f"NOX Graph display time: {time_plot_nox_graphs} seconds")
-        clog(f"APD Graph display time: {time_plot_apd_graphs} seconds")
-        clog(f"Map display time: {time_plot_map} seconds")
-        clog(f"Pollution display time: {time_pollution_display} seconds")
-        clog(f"Plot draw time: {time_plot_app} seconds")
 # END plot_app
