@@ -94,10 +94,10 @@ def plot_graphs(axis, data_key):
 
 	# plot graph for all locations
 	for loc in all_locations:
-		if loc.type == 'fixed':
+		if loc.is_station:
 			# use builder for fixed location
 			plot_location_graph(axis, loc, build_fixed_location_data_view, legend_lines, number_of_days_to_plot, data_key)
-		elif loc.type == 'variable':
+		else:
 			# use builder for variable location
 			plot_location_graph(axis, loc, build_variable_location_data_view, legend_lines, number_of_days_to_plot, data_key)
 

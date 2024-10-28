@@ -24,7 +24,7 @@ loc_kronstad = SimpleNamespace(
     data_lines = {KEY_NOX: None, KEY_APD: None},
     measurement_value = 0,
     color = UI.Colors.kronstad,
-	type='fixed',
+	is_station = True,
 )
 
 loc_nordnes = SimpleNamespace(
@@ -38,7 +38,7 @@ loc_nordnes = SimpleNamespace(
     data_lines = {KEY_NOX: None, KEY_APD: None},
     measurement_value = 0,
     color = UI.Colors.nordnes,
-	type='fixed',
+	is_station = True,
 )
 
 loc_bryggen = SimpleNamespace(
@@ -52,7 +52,7 @@ loc_bryggen = SimpleNamespace(
     data_lines = {KEY_NOX: None, KEY_APD: None},
     measurement_value = 0,
     color = UI.Colors.bryggen,
-	type = 'fixed',
+	is_station = True,
 )
 
 loc_user = SimpleNamespace(
@@ -63,7 +63,7 @@ loc_user = SimpleNamespace(
     data_lines = {KEY_NOX: None, KEY_APD: None},
     measurement_value = 0,
     color = UI.Colors.user,
-	type='variable',
+	is_station = False,
 )
 
 # make locations arrays for enabling iteration over stations
