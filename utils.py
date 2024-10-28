@@ -7,9 +7,11 @@ class EmptyClass:
 def clog(*args):
     print("LOG", *args)
 
+
 # get function name from function reference
 def get_function_name(fn):
     return fn.__name__ if fn is not None else "None"
+
 
 # get a successive random seeds starting at 1
 def get_next_rand_seed():
@@ -33,6 +35,10 @@ def hide_axis_graphics(ax, hide_ticks=True, hide_spines=True):
         ax.spines['bottom'].set_visible(False)
         ax.spines['left'].set_visible(False)
 
+
+# set window size
+def set_window_size(fig, new_x:int, new_y:int, width:int, height:int):
+    fig.canvas.manager.window.wm_geometry(f"{width}x{height}+{new_x}+{new_y}")
 
 """
 # function to map a value from one range to another

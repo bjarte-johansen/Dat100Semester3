@@ -104,27 +104,38 @@ from constants import AXIS_GRAPH, AXIS_MAP, AXIS_ALL
 
 # ---------- Event handlers ----------
 
+# clear line2d object data
 def invalidate_locations_data_lines():
     for loc in all_locations:
         for data_key in loc.data_lines:
             loc.data_lines[data_key] = None
 
+
+# clear selected axis, parameter must be an array or None
+# - clear all if keys is None
 def invalidate_graphs(keys:[int]=None):
+    # used for debugging
+    #print("invalidate_graphs", keys)
+
     # invalidate axis
     if keys is None:
         # clear all
         ax_nox.clear()
         ax_apd.clear()
+
+        # invalidate line2d objects
+        invalidate_locations_data_lines()
     else:
-        # clear specific
         if AXIS_GRAPH in keys:
             ax_nox.clear()
             ax_apd.clear()
+
+            # invalidate line2d objects
+            invalidate_locations_data_lines()
+
         if AXIS_MAP in keys:
             ax_city_map.clear()
 
-    # invalidate line2d objects
-    invalidate_locations_data_lines()
 
 
 def on_click(event) :

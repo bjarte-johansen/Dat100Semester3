@@ -17,6 +17,10 @@ MINIMUM_VALUE_FOR_HEIGHTMAP_BOXED = 0.5         # threshold for heightmap boxed 
 KEY_NOX = 'NOX'
 KEY_APD = 'APD'
 
+
+
+# define axis types, for future use for cleaing specific axis thru function calls
+
 AXIS_NONE = 0
 AXIS_ALL = 1
 AXIS_GRAPH = 2
@@ -46,7 +50,7 @@ string_to_data_fold_func_map = {
 }
 
 #define string -> render option
-string_to_render_option_map = {
+string_to_plot_type_map = {
     'Ingen': 'none',
     'Kontur': 'plot_grid_countour_lines',
     'Verdibokser': 'plot_grid_threshold_heatmap',
@@ -61,6 +65,6 @@ string_to_map_overlay_map = {
 
 # define string -> estimate
 string_to_estimate_func_map = {
-    'Weighted-1': get_estimated_value_at_point,
-    'Weighted-2': get_estimated_value_at_point_ext,
+    'Weighted-1': get_estimated_value_at_point_ext,
+    'Weighted-2': get_estimated_value_at_point,
 }

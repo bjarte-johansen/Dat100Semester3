@@ -6,14 +6,17 @@ import matplotlib.dates as mdates
 #from matplotlib.colors import LinearSegmentedColormap
 #import matplotlib.collections as mc
 from ui import uihelper
+import time
 
 # import application specific modules
 from defs import *
 from locations import *
 from plot_grid import *
+from plot_graphs import plot_graphs
+from utils import clog
 
 
-# Make markers at fixed and user-selected locations
+# plot markers for all locations
 def plot_location_markers():
     def create_patch_dot(xy: tuple[int, int]):
         return mpatches.Circle(xy, UI.marker_dot_radius, fill=True, color=UI.marker_dot_color)
@@ -33,60 +36,10 @@ def plot_location_markers():
     # could make/use all_locations but we do it in two steps for clarity
     for loc in all_locations:
         add_marker(ax_city_map, loc)
+#END plot_location_markers
 
 
-# plot data for a location, allowing shadowing parameters
-def plot_data(axis, day_index_list_arg, loc, data, data_key):
-    date_range = pd.date_range(start=app.date_range.start_date, end=app.date_range.end_date)
-
-    if loc.data_lines[data_key] is not None:
-        loc.data_lines[data_key].set_data(date_range, data)
-        return loc.data_lines[data_key]
-    else:
-        loc.data_lines[data_key] = axis.plot(date_range, data, color = loc.color)[0]
-        return loc.data_lines[data_key]
-
-
-def plot_user_selected_location_graphs(axis, legend_lines, number_of_days_to_plot, day_index_list, data_key):
-    # assign to a shorter variable name
-    loc_user = app.user_location
-
-    # extract data, plot and draw horisontal average line for user-selected location
-    if loc_user is not None and loc_user.coordinates is not None:
-        # allocate data_view
-        loc_user.data_view[data_key] = np.empty(number_of_days_to_plot, dtype=int)
-
-        # iterate over days
-        for i in range(0, number_of_days_to_plot):
-            # take measurement value
-            for loc in fixed_locations:
-                loc.measurement_value = loc.data_view[data_key][i]
-
-            # compute estimated value at point
-            loc_user.data_view[data_key][i] = app.get_estimated_value_at_point_func(fixed_locations, loc_user.coordinates)
-
-        # set/update user-point NOX values
-        legend_lines.append( plot_data(axis, day_index_list, loc_user, loc_user.data_view[data_key], data_key) )
-
-        # draw horisontal average line
-        axis.axhline(np.mean(loc_user.data_view[data_key]), color=UI.Colors.user, linestyle='--', linewidth=1)
-# END plot_user_selected_location
-
-
-def plot_fixed_locations_graphs(axis, legend_lines, number_of_days_to_plot, day_index_list, data_key):
-    # extract data, plot and draw horisontal average line for fixed locations
-    for loc in fixed_locations:
-        # extract into data-view
-        loc.data_view[data_key] = extract_data_interval(loc.historical_data[data_key], app.days_interval[0], app.days_interval[0] + number_of_days_to_plot)
-
-        # plot data for fixed locations, add to legend
-        legend_lines.append( plot_data(axis, day_index_list, loc, loc.data_view[data_key], data_key) )
-
-        # draw horisontal average line
-        axis.axhline(np.mean(loc.data_view[data_key]), color=loc.color, linestyle='--', linewidth=1)
-# END plot_fixed_locations
-
-
+# plot city map
 def plot_city_map(data_key):
     # clear axis
     ax_city_map.cla()
@@ -118,62 +71,7 @@ def plot_city_map(data_key):
     if app.plot_grid_heatmap:
         # plot heatmap boxed
         plot_grid_heatmap(ax_city_map, data_key)
-
-
-def plot_graphs(axis, data_key):
-    # plot labels and ticks
-    def plot_labels_and_ticks(axis, num_days):
-        # Configure major and minor ticks based on the range
-        if num_days <= 7:
-            # For very short ranges (up to a week), show individual days as major ticks
-            axis.xaxis.set_major_locator(mdates.DayLocator())
-            axis.xaxis.set_major_formatter(mdates.DateFormatter("%d %b"))
-            axis.xaxis.set_minor_locator(mdates.DayLocator(interval=1))  # Show every 3rd day as minor tick
-            axis.xaxis.set_minor_formatter(mdates.DateFormatter("%d"))
-        elif num_days <= 60:
-            # For ranges up to about 2 months, show months as major ticks and days as spaced minor ticks
-            axis.xaxis.set_major_locator(mdates.MonthLocator())
-            axis.xaxis.set_major_formatter(mdates.DateFormatter("%b"))
-            axis.xaxis.set_minor_locator(mdates.DayLocator(interval=5))  # Show every 3rd day as minor tick
-            axis.xaxis.set_minor_formatter(mdates.DateFormatter("%d"))
-        else:
-            # For longer ranges, show months as major ticks without day details
-            axis.xaxis.set_major_locator(mdates.MonthLocator())
-            axis.xaxis.set_major_formatter(mdates.DateFormatter("%b"))
-            axis.xaxis.set_minor_locator(mdates.DayLocator(bymonthday=1))  # Only the 1st day of each month as minor tick
-            axis.xaxis.set_minor_formatter(mdates.DateFormatter("%d"))
-
-        # Adjust padding for the major tick labels (months)
-        axis.tick_params(axis='x', which='major', pad=10)  # Adjust 'pad' to control spacing for major labels
-
-        # Rotate the major tick labels to avoid overlap
-        plt.setp(axis.get_xticklabels(), rotation=45, ha="right")
-    # END draw_label_and_ticks
-
-    # declare variables
-    legend_lines = []
-    number_of_days_to_plot = app.get_days_interval_duration()   # add 1 to include last day
-
-    # make day index list
-    day_index_list = np.arange(0, number_of_days_to_plot)
-
-    # plot graph for fixed locations
-    plot_fixed_locations_graphs(axis, legend_lines, number_of_days_to_plot, day_index_list, data_key)
-
-    # plot graph user-selected location
-    plot_user_selected_location_graphs(axis, legend_lines, number_of_days_to_plot, day_index_list, data_key)
-
-    # plot graph labels and ticks
-    plot_labels_and_ticks(axis, number_of_days_to_plot - 1)
-
-    # set graph title, legend, grid and autoscale etc
-    axis.set_title(data_key + " verdier")
-
-    # set legend
-    legend_titles = [loc.name for loc in all_locations]
-    axis.legend(legend_lines, legend_titles)
-
-    axis.grid(linestyle='dashed')
+#END plot_city_map
 
 
 def plot_pollution_display():
@@ -187,23 +85,45 @@ def plot_pollution_display():
         # set text input values
         key = key.lower() + "_pollution_percentage"
         uihelper.text_input_map[key].set_text( val )
+# END plot_pollution_display
 
 
 def plot_app():
-    # plot NOX graphs
-    plot_graphs(ax_nox, KEY_NOX)
+    clog("plot_app")
+
+    time_plot_app = time.time()
 
     # plot NOX graphs
+    time_plot_nox_graphs = time.time()
+    plot_graphs(ax_nox, KEY_NOX)
+    time_plot_nox_graphs = time.time() - time_plot_nox_graphs
+
+    # plot NOX graphs
+    time_plot_apd_graphs = time.time()
     plot_graphs(ax_apd, KEY_APD)
+    time_plot_apd_graphs = time.time() - time_plot_apd_graphs
 
     # plot map (change key to plot APD or NOX)
+    time_plot_map = time.time()
     plot_city_map(app.map_overlay_key)
+    time_plot_map = time.time() - time_plot_map
 
     # plot pollution display
+    time_pollution_display = time.time()
     plot_pollution_display()
+    time_pollution_display = time.time() - time_pollution_display
 
     # draw the plot
     plt.draw()
 
     # show plot
     plt.show()
+
+    time_plot_app = time.time() - time_plot_app
+
+    clog(f"NOX Graph display time: {time_plot_nox_graphs} seconds")
+    clog(f"APD Graph display time: {time_plot_apd_graphs} seconds")
+    clog(f"Map display time: {time_plot_map} seconds")
+    clog(f"Pollution display time: {time_pollution_display} seconds")
+    clog(f"Plot draw time: {time_plot_app} seconds")
+# END plot_app

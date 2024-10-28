@@ -38,10 +38,10 @@ class UI:
 
 class UIHelper:
 	def __init__(self):
-		self.text_input_list = []
 		self.text_input_map = {}
 		self.radio_buttons = []
 
+# hold refs to interactive widgets for access and to prevent gc
 uihelper = UIHelper()
 
 
@@ -56,10 +56,11 @@ def set_value_estimation_func_from_str(str_id):
 	app.set_data_estimation_callback(fn)
 
 	# invalidate graph axis
-	app.invalidate_graph_axis()
+	app.invalidate_graph_axis([AXIS_MAP])
 
 	# render
 	app.render()
+
 
 def set_data_fold_func_from_str(str_id):
 	# attempt to get default value from map
@@ -70,7 +71,7 @@ def set_data_fold_func_from_str(str_id):
 	app.set_data_fold_callback(fn)
 
 	# invalidate graph axis
-	app.invalidate_graph_axis()
+	app.invalidate_graph_axis([AXIS_MAP])
 
 	# render
 	app.render()
@@ -78,11 +79,11 @@ def set_data_fold_func_from_str(str_id):
 
 def set_render_option_from_str(str_id):
 	# update plot type
-	option = string_to_render_option_map.get(str_id, None)
+	option = string_to_plot_type_map.get(str_id, None)
 	app.set_plot_type(option, True)
 
 	# invalidate graph axis
-	app.invalidate_graph_axis()
+	app.invalidate_graph_axis([AXIS_MAP])
 
 	# render
 	app.render()
@@ -165,7 +166,7 @@ def create_radio_button_panel_for_interval(cb):
 
 def create_radio_button_panel_for_plot_options(cb):
 	ax = plt.axes([0.425, 0.715, 0.1, 0.26], facecolor=UI.RadioGroup.bg_color)
-	radio_button = create_radio_button_panel(ax, "Plot", list(string_to_render_option_map.keys()), cb)
+	radio_button = create_radio_button_panel(ax, "Plot", list(string_to_plot_type_map.keys()), cb)
 	return radio_button
 
 def create_radio_button_panel_for_fold_func(cb):
